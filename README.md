@@ -1,4 +1,4 @@
-# StackAudit
+# stackAudit
 
 > Making open source more discoverable, understandable, and accessible.
 
