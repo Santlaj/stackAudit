@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
+import { getHealthStatus } from "./health.service.js";
 
 export const getHealth = (_req: Request, res: Response): void => {
-  res.status(200).json({
-    status: "ok",
-    message: "StackAudit API is running",
-  });
+  const healthStatus = getHealthStatus();
+
+  res.status(200).json(healthStatus);
 };
