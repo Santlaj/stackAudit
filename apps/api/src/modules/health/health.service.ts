@@ -1,6 +1,9 @@
-export const getHealthStatus = () => {
+import { HEALTH_MESSAGE, HEALTH_STATUS } from "./health.constants.js";
+import { HealthResponse } from "./health.types.js";
+
+export const getHealthStatus = (): HealthResponse => {
   return {
-    status: "ok",
-    message: "StackAudit API is running",
+    status: HEALTH_STATUS,
+    message: HEALTH_MESSAGE,
   };
 };
