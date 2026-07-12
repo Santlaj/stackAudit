@@ -27,6 +27,9 @@ importers:
         specifier: ^5.1.0
         version: 5.2.1
     devDependencies:
+      '@stackaudit/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
       '@types/express':
         specifier: ^5.0.3
         version: 5.0.6
@@ -76,6 +79,8 @@ importers:
       typescript:
         specifier: ^5
         version: 5.9.3
+
+  packages/tsconfig: {}
 
 packages:
 
