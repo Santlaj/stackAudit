@@ -8392,7 +8392,7 @@ Minor implementation details may evolve without modifying the core principles de
 
 Sprint 1 focused exclusively on establishing the **engineering foundation** of the StackAudit platform. Rather than prioritizing business features or user-facing functionality, this sprint was dedicated to designing a scalable architecture, configuring development infrastructure, and defining engineering standards that will support the entire lifecycle of the project.
 
-The objective was to ensure that every future feature is built upon a stable, maintainable, and production-ready codebase. This approach minimizes technical debt, enforces consistency across the repository, and allows future development to focus on solving business problems instead of restructuring infrastructure.
+/The objective was to ensure that every future feature is built upon a stable, maintainable, and production-ready codebase. This approach minimizes technical debt, enforces consistency across the repository, and allows future development to focus on solving business problems instead of restructuring infrastructure.
 
 ---
 
@@ -13620,7 +13620,2589 @@ The next components to study are:
 6. `utils/`
 
 These components collectively define the execution flow of the backend application and should be understood before implementing new functionality.
+
+
 ---
+---
+
+# 17.x `apps/api/src/server.ts`
+
+## Purpose
+
+The `server.ts` file is the **application bootstrapper** of the backend. Its responsibility is intentionally minimal: start the HTTP server after all application components have been configured.
+
+A common mistake in many Express projects is allowing the bootstrap file to become the application's control center by placing route registration, middleware configuration, database initialization, and business logic directly inside it. This tightly couples application initialization with runtime behavior, making the codebase difficult to test, maintain, and evolve.
+
+To avoid this, StackAudit follows the principle of **separation between application construction and application execution**.
+
+- `app.ts` constructs the Express application.
+- `server.ts` executes the application.
+
+This separation forms the foundation for a clean backend architecture.
+
+---
+
+# Why `server.ts` Exists
+
+An Express application goes through two distinct phases:
+
+1. **Application Construction**
+   - Creating the Express instance.
+   - Registering middleware.
+   - Mounting routes.
+   - Configuring request handling.
+
+2. **Application Execution**
+   - Binding the application to a network port.
+   - Accepting incoming HTTP requests.
+   - Starting the server lifecycle.
+
+Although these phases are related, they solve different problems and should remain independent.
+
+`server.ts` exists solely to handle the second phase.
+
+---
+
+# Responsibilities
+
+The file has only three responsibilities:
+
+1. Import the validated environment configuration.
+2. Start the Express application.
+3. Log successful server startup.
+
+Anything beyond these responsibilities belongs elsewhere.
+
+---
+
+# Sprint 1 Implementation
+
+The current implementation is intentionally lightweight.
+
+```ts
+import { env } from "./config/env.js";
+import app from "./app.js";
+import { logger } from "./utils/logger.js";
+
+const PORT = env.PORT;
+
+app.listen(PORT, () => {
+  logger.info(`🚀 Server running on http://localhost:${PORT}`);
+});
+```
+
+Despite its simplicity, every line serves a specific architectural purpose.
+
+---
+
+# Line-by-Line Walkthrough
+
+## Importing Environment Configuration
+
+```ts
+import { env } from "./config/env.js";
+```
+
+The server never accesses `process.env` directly.
+
+Instead, it imports a validated configuration object from the configuration layer.
+
+This provides several benefits:
+
+- Centralized configuration
+- Type safety
+- Runtime validation
+- Early failure for missing configuration
+- Single source of truth
+
+This design prevents configuration logic from being scattered throughout the codebase.
+
+---
+
+## Importing the Application
+
+```ts
+import app from "./app.js";
+```
+
+This import retrieves a fully configured Express application.
+
+At this point:
+
+- Middleware has already been registered.
+- Routes have already been mounted.
+- Global error handling has already been configured.
+
+`server.ts` neither knows nor cares about these implementation details. Its only concern is starting the server.
+
+This loose coupling makes the application easier to test because the Express instance can be imported independently without opening a network port.
+
+---
+
+## Importing the Logger
+
+```ts
+import { logger } from "./utils/logger.js";
+```
+
+Instead of using `console.log()`, StackAudit uses a centralized logging utility.
+
+Benefits include:
+
+- Consistent log formatting
+- Easier debugging
+- Ability to swap logging libraries later
+- Structured logging support
+- Production-ready logging practices
+
+Every significant runtime event should eventually pass through this logging abstraction.
+
+---
+
+## Reading the Port
+
+```ts
+const PORT = env.PORT;
+```
+
+The listening port is retrieved from validated configuration.
+
+This avoids scattered usage of:
+
+```ts
+process.env.PORT
+```
+
+throughout the application and guarantees that the required configuration exists before server startup.
+
+---
+
+## Starting the HTTP Server
+
+```ts
+app.listen(PORT, () => {
+```
+
+This is the moment where the Express application transitions from configuration to execution.
+
+Before this call:
+
+- The application exists only in memory.
+- No network socket is open.
+- No client can communicate with the backend.
+
+After this call:
+
+- Node.js binds to the configured port.
+- The operating system allocates the socket.
+- HTTP requests can begin reaching the application.
+
+This single statement marks the beginning of the backend's runtime lifecycle.
+
+---
+
+## Startup Log
+
+```ts
+logger.info(`🚀 Server running on http://localhost:${PORT}`);
+```
+
+Once the server has successfully started, a startup message is written to the log.
+
+Although simple, this message provides immediate operational feedback by confirming:
+
+- The application booted successfully.
+- The listening port.
+- The local development URL.
+
+As the project evolves, additional startup information—such as database connectivity, Redis status, background workers, and external service health—can be logged here to provide a concise startup summary.
+
+---
+
+# Architectural Flow
+
+```text
+Developer executes
+
+pnpm --filter api dev
+        │
+        ▼
+server.ts
+        │
+        ▼
+Load validated environment
+        │
+        ▼
+Import configured Express app
+        │
+        ▼
+Bind application to PORT
+        │
+        ▼
+HTTP Server starts
+        │
+        ▼
+Ready to accept requests
+```
+
+This illustrates that `server.ts` serves as the entry point into the backend runtime, orchestrating startup without taking ownership of application configuration.
+
+---
+
+# Engineering Decisions
+
+| Decision | Reason |
+|----------|--------|
+| Separate `server.ts` from `app.ts` | Decouple application construction from execution. |
+| Use validated `env` object | Prevent invalid or missing configuration from reaching runtime. |
+| Use centralized logger | Ensure consistent, extensible logging across the project. |
+| Keep bootstrap logic minimal | Maintain a single, well-defined responsibility for the entry point. |
+| Avoid business logic | Preserve clean architecture and improve maintainability. |
+
+---
+
+# Future Evolution
+
+While Sprint 1 keeps `server.ts` intentionally minimal, future iterations may extend the startup process with infrastructure initialization, such as:
+
+- Database connection verification.
+- Redis connectivity checks.
+- Background worker initialization.
+- Graceful shutdown handlers.
+- Signal handling (`SIGINT`, `SIGTERM`).
+- Startup health diagnostics.
+- Startup performance metrics.
+- Production telemetry initialization.
+
+Even with these additions, `server.ts` should remain an orchestration layer rather than a location for business logic.
+
+---
+
+# Progress Snapshot
+
+**Status:** ✅ Implemented in Sprint 1
+
+### Current Responsibilities
+
+- Environment consumption.
+- Express application startup.
+- Startup logging.
+
+### Planned for Future Sprints
+
+- Database initialization.
+- Cache initialization.
+- Worker startup.
+- Graceful shutdown.
+- Infrastructure health checks.
+
+---
+
+# Resume Note
+
+The design of `server.ts` demonstrates adherence to clean architecture principles by separating application construction from execution. Although the file is small, it reflects deliberate engineering decisions that improve modularity, testability, and long-term maintainability—qualities expected in production-grade backend systems.
+
+---
+---
+
+# 17.x `apps/api/src/app.ts`
+
+## Purpose
+
+The `app.ts` file is the **application construction layer** of the backend. It is responsible for creating, configuring, and assembling the Express application before it is started by `server.ts`.
+
+Unlike `server.ts`, which focuses solely on starting the HTTP server, `app.ts` defines **how the application behaves** by registering middleware, mounting feature modules, and configuring global request handling.
+
+This clear separation between application construction and execution is one of the core architectural decisions of StackAudit.
+
+---
+
+# Why `app.ts` Exists
+
+In Express applications, there are two fundamentally different concerns:
+
+1. **Constructing the application**
+2. **Running the application**
+
+The construction phase involves assembling every component required for request processing.
+
+This includes:
+
+- Creating the Express instance
+- Registering middleware
+- Configuring body parsing
+- Registering feature modules
+- Configuring global error handling
+
+The execution phase simply starts listening for incoming requests.
+
+By moving all configuration into `app.ts`, the project achieves several important engineering benefits:
+
+- Better separation of concerns
+- Easier testing
+- Cleaner project organization
+- Independent application initialization
+- Improved maintainability
+
+---
+
+# Responsibilities
+
+`app.ts` is responsible for:
+
+- Creating the Express application
+- Registering global middleware
+- Configuring request parsing
+- Mounting feature modules
+- Registering fallback handlers
+- Registering the global error handler
+- Exporting the fully configured Express application
+
+It is **not** responsible for:
+
+- Starting the HTTP server
+- Database initialization
+- Business logic
+- Environment validation
+- Background jobs
+
+Those responsibilities belong to other layers of the application.
+
+---
+
+# Sprint 1 Implementation
+
+The current implementation is intentionally minimal but establishes the complete request-processing pipeline.
+
+```ts
+import express from "express";
+import healthRouter from "./modules/health/index.js";
+import { errorHandler } from "./middleware/error.middleware.js";
+import { notFoundHandler } from "./middleware/not-found.middleware.js";
+import { requestLogger } from "./middleware/request-logger.middleware.js";
+
+const app = express();
+
+app.use(requestLogger);
+
+// Built-in middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Feature modules
+app.use("/api/health", healthRouter);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
+
+export default app;
+```
+
+Although only a few lines long, this file defines the complete processing pipeline for every incoming request.
+
+---
+
+# Line-by-Line Walkthrough
+
+## Importing Express
+
+```ts
+import express from "express";
+```
+
+This imports the Express framework, which acts as the HTTP application layer for the backend.
+
+Express provides:
+
+- Routing
+- Middleware execution
+- Request handling
+- Response generation
+- Error propagation
+
+Everything else in the application is built on top of this foundation.
+
+---
+
+## Importing Feature Modules
+
+```ts
+import healthRouter from "./modules/health/index.js";
+```
+
+Instead of defining routes directly inside `app.ts`, StackAudit organizes functionality into independent feature modules.
+
+Currently the project contains only the Health module, but future modules will include:
+
+- Authentication
+- Users
+- Organizations
+- Repositories
+- AI Analysis
+- Reports
+
+This modular structure allows the application to scale without turning `app.ts` into a large, unmaintainable file.
+
+---
+
+## Importing Middleware
+
+```ts
+import { requestLogger } from "./middleware/request-logger.middleware.js";
+import { notFoundHandler } from "./middleware/not-found.middleware.js";
+import { errorHandler } from "./middleware/error.middleware.js";
+```
+
+Middleware is separated into dedicated files to keep concerns isolated.
+
+Each middleware has a single responsibility:
+
+| Middleware | Responsibility |
+|------------|----------------|
+| `requestLogger` | Logs every incoming request |
+| `notFoundHandler` | Handles undefined routes (404) |
+| `errorHandler` | Produces standardized error responses |
+
+Keeping middleware independent improves readability, testing, and future extensibility.
+
+---
+
+## Creating the Express Application
+
+```ts
+const app = express();
+```
+
+This creates the central Express application instance.
+
+At this point the application is empty.
+
+It has:
+
+- No middleware
+- No routes
+- No request handling
+
+The following statements gradually build the application's behavior.
+
+---
+
+## Registering Request Logger
+
+```ts
+app.use(requestLogger);
+```
+
+The request logger is intentionally registered first.
+
+Every request entering the application passes through this middleware before any other processing occurs.
+
+This ensures that:
+
+- Every request is recorded.
+- Failed requests are still logged.
+- Debugging becomes significantly easier.
+
+Logging as early as possible provides maximum observability.
+
+---
+
+## JSON Parser
+
+```ts
+app.use(express.json());
+```
+
+This built-in middleware parses JSON request bodies.
+
+Without it, Express cannot automatically convert:
+
+```json
+{
+  "name": "Santlaj"
+}
+```
+
+into:
+
+```ts
+req.body
+```
+
+Most REST APIs communicate using JSON, making this middleware essential.
+
+---
+
+## URL-Encoded Parser
+
+```ts
+app.use(express.urlencoded({ extended: true }));
+```
+
+This middleware parses traditional HTML form submissions.
+
+Although StackAudit primarily exposes JSON APIs, enabling this parser provides broader compatibility with future integrations and web forms.
+
+---
+
+## Mounting Feature Modules
+
+```ts
+app.use("/api/health", healthRouter);
+```
+
+This statement registers the Health module under the `/api/health` route.
+
+The application delegates all requests matching this path to the Health module.
+
+Instead of keeping every route in one place, each feature owns its own routing logic.
+
+As more modules are added, this section will become the central registry for application features.
+
+---
+
+## Registering the 404 Handler
+
+```ts
+app.use(notFoundHandler);
+```
+
+After all routes have been registered, Express attempts to match incoming requests.
+
+If no route matches, execution reaches this middleware.
+
+Its responsibility is to generate a consistent **404 Not Found** response.
+
+Registering this middleware before the error handler ensures that unmatched routes are handled gracefully instead of producing ambiguous server errors.
+
+---
+
+## Registering the Global Error Handler
+
+```ts
+app.use(errorHandler);
+```
+
+This is the final middleware in the pipeline.
+
+Any error thrown by:
+
+- Middleware
+- Controllers
+- Services
+- Route handlers
+
+is ultimately processed here.
+
+Centralizing error handling provides:
+
+- Consistent response format
+- Better debugging
+- Cleaner controllers
+- Reduced code duplication
+
+Every unexpected application error eventually reaches this layer.
+
+---
+
+## Exporting the Application
+
+```ts
+export default app;
+```
+
+The configured application is exported without starting the server.
+
+This design allows:
+
+- `server.ts` to start the application.
+- Test suites to import the application.
+- Future tools to reuse the application instance.
+
+The application remains independent of its execution environment.
+
+---
+
+# Request Lifecycle
+
+Every HTTP request follows the same execution pipeline.
+
+```text
+Incoming Request
+        │
+        ▼
+requestLogger
+        │
+        ▼
+JSON Parser
+        │
+        ▼
+URL Encoded Parser
+        │
+        ▼
+Feature Router
+        │
+        ▼
+Controller
+        │
+        ▼
+Service
+        │
+        ▼
+Response
+```
+
+If no route matches:
+
+```text
+Incoming Request
+        │
+        ▼
+All Routes Checked
+        │
+        ▼
+notFoundHandler
+        │
+        ▼
+404 Response
+```
+
+If an exception occurs:
+
+```text
+Middleware / Controller / Service
+                │
+                ▼
+errorHandler
+                │
+                ▼
+Standardized Error Response
+```
+
+---
+
+# Middleware Execution Order
+
+The order of middleware registration is critical.
+
+Current execution sequence:
+
+| Order | Middleware | Purpose |
+|--------|------------|---------|
+| 1 | Request Logger | Log incoming requests |
+| 2 | JSON Parser | Parse JSON payloads |
+| 3 | URL-Encoded Parser | Parse form data |
+| 4 | Feature Modules | Execute business logic |
+| 5 | Not Found Handler | Handle unknown routes |
+| 6 | Error Handler | Process all application errors |
+
+Changing this order can significantly alter application behavior.
+
+For example, placing the error handler before feature routes would prevent it from catching downstream exceptions correctly.
+
+---
+
+# Engineering Decisions
+
+| Decision | Reason |
+|----------|--------|
+| Separate `app.ts` from `server.ts` | Decouple construction from execution |
+| Feature-first routing | Improves scalability and maintainability |
+| Register middleware globally | Ensures consistent request processing |
+| Centralize error handling | Standardized error responses |
+| Use modular routing | Keeps each feature self-contained |
+| Export the app instance | Enables testing and reuse without opening a network port |
+
+---
+
+# Future Evolution
+
+As StackAudit grows, `app.ts` will become the central composition layer for additional infrastructure.
+
+Future additions may include:
+
+- CORS configuration
+- Helmet security middleware
+- Compression
+- Cookie parser
+- Authentication middleware
+- Rate limiting
+- API versioning
+- Metrics collection
+- OpenAPI/Swagger integration
+- Request validation middleware
+
+Despite these additions, `app.ts` should remain focused on assembling the application rather than implementing business logic.
+
+---
+
+# Progress Snapshot
+
+**Status:** ✅ Implemented in Sprint 1
+
+### Current Responsibilities
+
+- Create the Express application
+- Register global middleware
+- Configure body parsing
+- Mount feature modules
+- Handle unknown routes
+- Register global error handling
+
+### Planned for Future Sprints
+
+- Authentication middleware
+- Security middleware
+- API versioning
+- Metrics and monitoring
+- CORS configuration
+- Request validation
+- OpenAPI documentation
+- Rate limiting
+
+---
+
+# Resume Note
+
+The structure of `app.ts` reflects a modular and scalable Express architecture by separating application construction from server execution. Middleware, routing, and error handling are composed in a predictable pipeline, resulting in a backend foundation that is maintainable, testable, and ready to support future feature expansion without requiring architectural restructuring.
+
+---
+---
+
+# 17.x `apps/api/src/config/`
+
+## Purpose
+
+The `config/` directory serves as the **centralized configuration layer** of the backend. Its responsibility is to load, validate, and expose configuration values required by the application.
+
+Instead of allowing different parts of the codebase to read directly from `process.env`, StackAudit routes all configuration access through this directory. This creates a single source of truth for runtime configuration and prevents configuration logic from being scattered across controllers, services, middleware, and utility classes.
+
+Centralizing configuration improves consistency, maintainability, and application safety.
+
+---
+
+# Why a Dedicated Configuration Layer?
+
+Configuration is one of the most critical aspects of any backend application.
+
+Database credentials, API keys, JWT secrets, server ports, and third-party service URLs determine how an application behaves in different environments.
+
+Without a dedicated configuration layer, developers often write code like:
+
+```ts
+process.env.PORT
+process.env.DATABASE_URL
+process.env.JWT_SECRET
+```
+
+throughout the project.
+
+Although this works for small applications, it creates several long-term problems:
+
+- Duplicate configuration access.
+- No runtime validation.
+- Poor type safety.
+- Difficult debugging.
+- Inconsistent default values.
+- Hidden configuration dependencies.
+
+StackAudit avoids these issues by introducing a centralized configuration layer from the very beginning.
+
+---
+
+# Responsibilities
+
+The `config/` directory is responsible for:
+
+- Loading environment variables.
+- Validating required configuration.
+- Providing type-safe configuration objects.
+- Preventing invalid application startup.
+- Serving as the single source of truth for runtime configuration.
+
+It is **not** responsible for:
+
+- Business logic.
+- Database connections.
+- Dependency injection.
+- Feature configuration.
+- Runtime application state.
+
+---
+
+# Current Structure
+
+During Sprint 1, the configuration layer contains a single file.
+
+```text
+config/
+└── env.ts
+```
+
+Although minimal, this establishes the architectural pattern that future configuration files will follow.
+
+As the application grows, this directory may expand to include additional configuration modules.
+
+For example:
+
+```text
+config/
+├── env.ts
+├── database.ts
+├── redis.ts
+├── logger.ts
+├── auth.ts
+├── storage.ts
+└── ai.ts
+```
+
+Each file would manage configuration for a specific infrastructure component while maintaining a clear separation of concerns.
+
+---
+
+# Architectural Position
+
+The configuration layer is loaded before most of the application.
+
+```text
+Environment Variables
+           │
+           ▼
+      config/env.ts
+           │
+           ▼
+Validated Configuration
+           │
+           ▼
+Application Components
+```
+
+Every layer that requires configuration depends on `config/` instead of reading directly from `process.env`.
+
+---
+
+# Engineering Decisions
+
+| Decision | Reason |
+|----------|--------|
+| Centralize configuration | Single source of truth |
+| Avoid direct `process.env` access | Improves maintainability and consistency |
+| Validate configuration at startup | Fail fast if required values are missing |
+| Keep configuration independent | Prevent coupling with business logic |
+| Use dedicated directory | Makes future infrastructure expansion straightforward |
+
+---
+
+# Future Evolution
+
+As StackAudit grows, this directory will become the central location for infrastructure configuration.
+
+Future additions may include:
+
+- PostgreSQL configuration
+- Prisma configuration
+- Redis configuration
+- Authentication settings
+- Email service configuration
+- Cloud storage configuration
+- AI provider configuration
+- Queue configuration
+- Monitoring configuration
+- Feature flags
+
+Each infrastructure component should expose its own configuration module while remaining independent of business logic.
+
+---
+
+# Progress Snapshot
+
+**Status:** ✅ Implemented in Sprint 1
+
+### Current Responsibilities
+
+- Centralized configuration layer
+- Environment validation
+- Type-safe configuration access
+
+### Planned for Future Sprints
+
+- Database configuration
+- Redis configuration
+- Authentication configuration
+- External service configuration
+- Feature flag management
+
+---
+
+# Resume Note
+
+The `config/` directory establishes a centralized configuration architecture that separates runtime configuration from application logic. By validating and exposing configuration through dedicated modules, the backend gains improved reliability, type safety, and maintainability while preparing the codebase for future infrastructure growth.
+
+---
+---
+
+# 17.x `apps/api/src/config/env.ts`
+
+## Purpose
+
+The `env.ts` file is the **centralized environment configuration module** of the StackAudit backend. Its responsibility is to load environment variables, validate them, and expose a type-safe configuration object that can be safely consumed throughout the application.
+
+Rather than allowing different parts of the codebase to directly access `process.env`, this module acts as the single gateway between the operating system's environment and the application's runtime.
+
+This approach ensures that configuration is validated **once during startup**, allowing the application to fail immediately if required values are missing or invalid.
+
+---
+
+# Why `env.ts` Exists
+
+Every backend application depends on runtime configuration.
+
+Examples include:
+
+- Server port
+- Database connection strings
+- JWT secrets
+- API keys
+- Redis configuration
+- SMTP credentials
+- Cloud storage keys
+
+A common approach is to read these values directly from `process.env`.
+
+For example:
+
+```ts
+const port = process.env.PORT;
+const jwtSecret = process.env.JWT_SECRET;
+const databaseUrl = process.env.DATABASE_URL;
+```
+
+Although this works for small projects, it introduces several engineering problems:
+
+- Configuration logic becomes scattered.
+- Missing variables are discovered only when the affected code executes.
+- No compile-time type safety.
+- Repeated parsing and conversions.
+- Difficult debugging.
+- Hidden dependencies.
+
+StackAudit avoids these issues by centralizing all environment management inside `env.ts`.
+
+---
+
+# Responsibilities
+
+`env.ts` has a single responsibility:
+
+> Convert raw environment variables into a validated, type-safe configuration object.
+
+To achieve this, it performs four steps:
+
+1. Load environment variables.
+2. Define the expected schema.
+3. Validate runtime values.
+4. Export validated configuration.
+
+Nothing else belongs in this file.
+
+---
+
+# Sprint 1 Implementation
+
+```ts
+import { config } from "dotenv";
+import { z } from "zod";
+
+config();
+
+const envSchema = z.object({
+  NODE_ENV: z
+    .enum(["development", "test", "production"])
+    .default("development"),
+
+  PORT: z.coerce.number().default(4000),
+});
+
+const parsedEnv = envSchema.safeParse(process.env);
+
+if (!parsedEnv.success) {
+  console.error("❌ Invalid environment variables");
+  console.error(parsedEnv.error.format());
+  process.exit(1);
+}
+
+export const env = parsedEnv.data;
+```
+
+Although compact, this implementation establishes a robust configuration system that future infrastructure components will build upon.
+
+---
+
+# Line-by-Line Walkthrough
+
+## Loading `dotenv`
+
+```ts
+import { config } from "dotenv";
+```
+
+The `dotenv` package reads values from the project's `.env` file and injects them into `process.env`.
+
+Without calling `config()`, local environment variables stored in `.env` would not be available to the application during development.
+
+This keeps sensitive configuration outside the source code while allowing different environments to use different settings.
+
+---
+
+## Importing Zod
+
+```ts
+import { z } from "zod";
+```
+
+Zod is used as the runtime validation library.
+
+Unlike TypeScript, which performs checks only during compilation, Zod validates data **while the application is running**.
+
+This is essential because environment variables originate outside the application and cannot be trusted.
+
+---
+
+## Loading Environment Variables
+
+```ts
+config();
+```
+
+This statement loads environment variables from the `.env` file into `process.env`.
+
+It is executed before any validation occurs, ensuring that all expected values are available for parsing.
+
+If the project is deployed to a production environment, values supplied by the operating system or deployment platform will also be available through `process.env`.
+
+---
+
+## Defining the Schema
+
+```ts
+const envSchema = z.object({
+```
+
+The schema represents the contract that defines which environment variables the application expects.
+
+Every configuration value should be declared here rather than accessed directly elsewhere in the codebase.
+
+This creates a single source of truth for runtime configuration.
+
+---
+
+## Validating `NODE_ENV`
+
+```ts
+NODE_ENV: z
+  .enum(["development", "test", "production"])
+  .default("development"),
+```
+
+`NODE_ENV` determines the application's execution environment.
+
+Only three values are accepted:
+
+- `development`
+- `test`
+- `production`
+
+Providing an invalid value causes validation to fail during startup.
+
+If the variable is omitted, it defaults to `"development"`.
+
+Using an enumeration prevents accidental values such as:
+
+```text
+dev
+prod
+testing
+Development
+```
+
+which could otherwise introduce inconsistent application behavior.
+
+---
+
+## Validating `PORT`
+
+```ts
+PORT: z.coerce.number().default(4000),
+```
+
+Environment variables are always loaded as strings.
+
+For example:
+
+```text
+PORT=4000
+```
+
+is initially read as:
+
+```ts
+"4000"
+```
+
+Using `z.coerce.number()` automatically converts the string into a numeric value before validation.
+
+If the variable is absent, the application defaults to port **4000**, ensuring that local development can start without requiring explicit configuration.
+
+---
+
+## Validating the Entire Environment
+
+```ts
+const parsedEnv = envSchema.safeParse(process.env);
+```
+
+This statement validates every required environment variable against the schema.
+
+Unlike `parse()`, which throws an exception immediately, `safeParse()` returns an object describing whether validation succeeded.
+
+This allows the application to provide more informative error messages before terminating.
+
+---
+
+## Handling Validation Failure
+
+```ts
+if (!parsedEnv.success) {
+```
+
+If validation fails, the backend refuses to start.
+
+This follows the **Fail Fast** engineering principle.
+
+Rather than allowing the application to continue running with invalid configuration, startup is aborted immediately.
+
+This prevents unpredictable runtime failures that may otherwise occur much later.
+
+---
+
+## Displaying Validation Errors
+
+```ts
+console.error("❌ Invalid environment variables");
+console.error(parsedEnv.error.format());
+```
+
+When validation fails, Zod produces a structured error report describing exactly which configuration values are incorrect or missing.
+
+This significantly improves debugging by allowing developers to correct configuration issues before the application begins serving requests.
+
+---
+
+## Stopping Application Startup
+
+```ts
+process.exit(1);
+```
+
+After reporting validation errors, the application exits with a non-zero exit code.
+
+A non-zero exit status indicates that startup failed due to an error.
+
+Allowing the application to continue after invalid configuration would risk undefined behavior throughout the system.
+
+---
+
+## Exporting the Configuration
+
+```ts
+export const env = parsedEnv.data;
+```
+
+Once validation succeeds, the parsed configuration is exported as a strongly typed object.
+
+Every other part of the application imports this object instead of interacting directly with `process.env`.
+
+Example:
+
+```ts
+import { env } from "./config/env.js";
+
+const PORT = env.PORT;
+```
+
+This guarantees that every configuration value has already been validated before use.
+
+---
+
+# Configuration Lifecycle
+
+The complete configuration flow is shown below.
+
+```text
+.env File
+        │
+        ▼
+dotenv.config()
+        │
+        ▼
+process.env
+        │
+        ▼
+Zod Schema
+        │
+        ▼
+Validation
+        │
+        ├───────────────┐
+        │               │
+        ▼               ▼
+Success           Validation Error
+        │               │
+        ▼               ▼
+Export env      Display Errors
+        │               │
+        ▼               ▼
+Application     process.exit(1)
+Startup
+```
+
+This lifecycle ensures that invalid configuration is detected before the application begins handling requests.
+
+---
+
+# Why Use `safeParse()` Instead of `parse()`?
+
+Zod provides two primary validation methods.
+
+| Method | Behavior |
+|---------|----------|
+| `parse()` | Throws an exception immediately on failure. |
+| `safeParse()` | Returns a structured success/error result. |
+
+StackAudit uses `safeParse()` because it allows startup failures to be handled gracefully with meaningful error messages instead of uncaught exceptions.
+
+---
+
+# Engineering Decisions
+
+| Decision | Reason |
+|----------|--------|
+| Centralize environment loading | Single source of truth |
+| Use `dotenv` | Simplifies local development |
+| Use Zod | Runtime validation with type inference |
+| Use `safeParse()` | Controlled startup failure |
+| Use enums for `NODE_ENV` | Prevent invalid execution modes |
+| Use `z.coerce.number()` | Automatically convert string values |
+| Export validated object | Prevent direct `process.env` usage |
+| Fail fast on validation errors | Avoid unpredictable runtime failures |
+
+---
+
+# Security Considerations
+
+Although `env.ts` validates configuration, it does **not** eliminate the need for secure secret management.
+
+Future production deployments should ensure that:
+
+- Secrets are never committed to Git.
+- `.env` files remain excluded through `.gitignore`.
+- Production secrets are supplied through deployment infrastructure.
+- Sensitive values are rotated periodically.
+- Access to production secrets is restricted.
+
+Validation improves reliability but is not a replacement for secure secret management.
+
+---
+
+# Future Evolution
+
+As StackAudit grows, additional configuration values will be introduced.
+
+Future schema entries may include:
+
+- `DATABASE_URL`
+- `REDIS_URL`
+- `BETTER_AUTH_SECRET`
+- `GITHUB_CLIENT_ID`
+- `GITHUB_CLIENT_SECRET`
+- `OPENAI_API_KEY`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `AWS_REGION`
+- `S3_BUCKET_NAME`
+
+Regardless of project size, every new environment variable should be declared inside `envSchema` before being consumed elsewhere.
+
+---
+
+# Progress Snapshot
+
+**Status:** ✅ Implemented in Sprint 1
+
+### Current Configuration
+
+- `NODE_ENV`
+- `PORT`
+
+### Planned Configuration
+
+- PostgreSQL
+- Redis
+- Authentication
+- GitHub OAuth
+- AI Providers
+- Email Services
+- Cloud Storage
+- Queue Infrastructure
+
+---
+
+# Resume Note
+
+The `env.ts` module demonstrates production-oriented configuration management by centralizing environment loading, performing runtime validation with Zod, and exposing a type-safe configuration object. This implementation follows the fail-fast principle, preventing the application from starting with invalid configuration and establishing a scalable foundation for future infrastructure integrations.
+
+---
+---
+
+# 17.x `apps/api/src/middleware/`
+
+## Purpose
+
+The `middleware/` directory contains all **global middleware** used by the Express application. Middleware forms the backbone of the request-processing pipeline, allowing cross-cutting concerns to be handled independently of business logic.
+
+Instead of embedding logging, validation, authentication, or error handling directly into controllers, StackAudit encapsulates these responsibilities into reusable middleware components. This keeps feature modules focused solely on implementing business functionality while the middleware layer manages application-wide behavior.
+
+The middleware layer is one of the most important architectural boundaries in the backend because **every incoming request passes through it before reaching any controller**.
+
+---
+
+# What is Middleware?
+
+In Express, middleware is a function that executes during the lifecycle of an HTTP request.
+
+It has access to:
+
+- The incoming request (`req`)
+- The outgoing response (`res`)
+- The next middleware in the pipeline (`next`)
+
+A middleware can:
+
+- Continue the request.
+- Modify the request.
+- Modify the response.
+- Terminate the request.
+- Throw an error.
+- Redirect execution.
+
+This makes middleware ideal for implementing functionality that applies across multiple routes.
+
+---
+
+# Why a Dedicated Middleware Layer?
+
+Without middleware, developers often repeat the same logic inside every controller.
+
+For example:
+
+```ts
+// Log request
+console.log(req.method);
+
+// Validate authentication
+if (!user) {
+    return res.status(401);
+}
+
+// Continue business logic...
+```
+
+As the application grows, this leads to:
+
+- Code duplication.
+- Inconsistent behavior.
+- Difficult maintenance.
+- Poor separation of concerns.
+- Larger controllers.
+
+StackAudit avoids this by isolating shared behaviors into dedicated middleware.
+
+Each middleware performs **one well-defined responsibility** and can be reused across the entire application.
+
+---
+
+# Responsibilities
+
+The middleware layer is responsible for concerns that affect multiple endpoints rather than a single feature.
+
+Examples include:
+
+- Request logging
+- Authentication
+- Authorization
+- Validation
+- Error handling
+- Rate limiting
+- CORS
+- Compression
+- Metrics collection
+- Security headers
+
+Business logic should **never** be implemented inside middleware.
+
+Middleware should prepare, protect, or observe the request—not implement application features.
+
+---
+
+# Current Structure
+
+During Sprint 1, the middleware layer contains three middleware components.
+
+```text
+middleware/
+├── request-logger.middleware.ts
+├── not-found.middleware.ts
+└── error.middleware.ts
+```
+
+Each file has a single responsibility.
+
+| Middleware | Purpose |
+|------------|---------|
+| `request-logger.middleware.ts` | Logs every incoming HTTP request. |
+| `not-found.middleware.ts` | Handles requests for undefined routes. |
+| `error.middleware.ts` | Produces standardized error responses for unhandled exceptions. |
+
+This establishes the architectural pattern that future middleware will follow.
+
+---
+
+# Architectural Position
+
+Every request entering the backend passes through the middleware pipeline before reaching application logic.
+
+```text
+Incoming Request
+        │
+        ▼
+Request Logger
+        │
+        ▼
+Body Parsing
+        │
+        ▼
+Authentication (Future)
+        │
+        ▼
+Validation (Future)
+        │
+        ▼
+Feature Module
+        │
+        ▼
+Controller
+        │
+        ▼
+Service
+        │
+        ▼
+Response
+```
+
+If an exception occurs anywhere in the pipeline, control is transferred to the global error handler.
+
+---
+
+# Middleware Categories
+
+As StackAudit evolves, middleware can be grouped into several categories.
+
+## Observability Middleware
+
+Responsible for monitoring and logging.
+
+Examples:
+
+- Request logging
+- Response logging
+- Metrics
+- Performance timing
+
+---
+
+## Security Middleware
+
+Protects the application.
+
+Examples:
+
+- Helmet
+- CORS
+- Authentication
+- Authorization
+- Rate limiting
+
+---
+
+## Transformation Middleware
+
+Transforms request data.
+
+Examples:
+
+- JSON parsing
+- URL encoding
+- Cookie parsing
+- Multipart parsing
+
+---
+
+## Validation Middleware
+
+Ensures incoming requests satisfy expected formats.
+
+Examples:
+
+- Body validation
+- Query validation
+- Parameter validation
+- Header validation
+
+---
+
+## Error Middleware
+
+Handles unexpected failures.
+
+Examples:
+
+- Global error handler
+- 404 handler
+
+---
+
+# Middleware Execution Order
+
+Middleware order is extremely important.
+
+Express executes middleware **in the exact order they are registered**.
+
+Current execution order:
+
+```text
+Incoming Request
+        │
+        ▼
+requestLogger
+        │
+        ▼
+express.json()
+        │
+        ▼
+express.urlencoded()
+        │
+        ▼
+Feature Routes
+        │
+        ├───────────────► Route Found
+        │                        │
+        │                        ▼
+        │                  Controller
+        │                        │
+        │                        ▼
+        │                   Response
+        │
+        └───────────────► No Route
+                                 │
+                                 ▼
+                        notFoundHandler
+                                 │
+                                 ▼
+                           404 Response
+```
+
+If an exception occurs during any stage:
+
+```text
+Controller
+      │
+      ▼
+Middleware
+      │
+      ▼
+Service
+      │
+      ▼
+errorHandler
+      │
+      ▼
+Standardized Error Response
+```
+
+The order of middleware registration directly influences application behavior and must be carefully maintained.
+
+---
+
+# Engineering Decisions
+
+| Decision | Reason |
+|----------|--------|
+| Dedicated `middleware/` directory | Centralizes cross-cutting concerns. |
+| One responsibility per middleware | Improves maintainability and reusability. |
+| Keep controllers lightweight | Business logic remains focused and readable. |
+| Register middleware globally | Ensures consistent behavior across all routes. |
+| Separate error middleware | Centralized exception handling. |
+
+---
+
+# Future Evolution
+
+As StackAudit transitions from a foundation to a production-grade platform, additional middleware will be introduced.
+
+Planned additions include:
+
+- Authentication middleware
+- Authorization middleware
+- Request validation middleware
+- Helmet security middleware
+- CORS configuration
+- Compression middleware
+- Rate limiting
+- Request ID generation
+- Correlation ID tracking
+- Performance monitoring
+- Metrics collection
+- Audit logging
+
+Despite this growth, each middleware should continue following the **Single Responsibility Principle**, ensuring that every component remains focused, testable, and reusable.
+
+---
+
+# Progress Snapshot
+
+**Status:** ✅ Implemented in Sprint 1
+
+### Current Middleware
+
+- Request logging
+- 404 handling
+- Global error handling
+
+### Planned Middleware
+
+- Authentication
+- Authorization
+- Request validation
+- Security
+- Monitoring
+- Metrics
+- Rate limiting
+- CORS
+- Compression
+
+---
+
+# Resume Note
+
+The `middleware/` layer establishes a scalable request-processing architecture by separating cross-cutting concerns from business logic. Through modular middleware components and a well-defined execution pipeline, the backend achieves improved maintainability, observability, and extensibility while preparing the application for future production-scale infrastructure.
+
+---
+---
+
+# 17.x `apps/api/src/modules/`
+
+## Purpose
+
+The `modules/` directory is the **functional core** of the StackAudit backend. Every business capability implemented by the application is represented as an independent module inside this directory.
+
+Unlike organizing files by technical layers (such as placing all controllers together, all services together, and all routes together), StackAudit follows a **feature-first architecture**. Each feature owns all of its related components, making the codebase easier to navigate, extend, and maintain.
+
+The `modules/` directory is where the application's business logic will continue to grow over future sprints.
+
+---
+
+# Why a Feature-First Architecture?
+
+One of the earliest architectural decisions in StackAudit was choosing a **feature-based organization** over a traditional layer-based structure.
+
+Instead of this:
+
+```text
+controllers/
+services/
+routes/
+models/
+validators/
+```
+
+StackAudit organizes code like:
+
+```text
+modules/
+├── auth/
+├── user/
+├── repository/
+├── organization/
+├── analysis/
+└── health/
+```
+
+Each module contains everything required for that feature.
+
+Benefits include:
+
+- Better scalability as the project grows.
+- Easier onboarding for new developers.
+- Reduced coupling between unrelated features.
+- Improved maintainability.
+- Clear ownership of business functionality.
+
+---
+
+# Current Implementation (Sprint 1)
+
+At the end of Sprint 1, only a single module has been implemented.
+
+```text
+modules/
+└── health/
+```
+
+The Health module serves as the foundation for the module architecture and validates that the routing, controller, service, and middleware pipeline is functioning correctly.
+
+Although simple, it establishes the structure that every future module will follow.
+
+---
+
+# Standard Module Structure
+
+Every business module in StackAudit should follow a consistent internal structure.
+
+```text
+module-name/
+├── controller.ts
+├── service.ts
+├── routes.ts
+├── schema.ts
+├── types.ts
+├── repository.ts
+├── index.ts
+└── README.md (optional)
+```
+
+Not every file is required during Sprint 1, but the architecture is designed to support this layout as the project evolves.
+
+---
+
+# Module Responsibilities
+
+Each module is responsible for a single business capability.
+
+Typical responsibilities include:
+
+- Defining routes.
+- Validating requests.
+- Executing business logic.
+- Interacting with repositories.
+- Returning standardized responses.
+
+Modules should remain independent wherever possible.
+
+Cross-module communication should occur through well-defined service boundaries rather than direct file access.
+
+---
+
+# Architectural Decisions
+
+Several important engineering decisions influenced the design of the module system.
+
+### Feature Isolation
+
+Each feature owns its own implementation.
+
+For example:
+
+- Authentication logic belongs inside the Auth module.
+- Repository analysis belongs inside the Analysis module.
+- User management belongs inside the User module.
+
+No module should become responsible for unrelated business concerns.
+
+---
+
+### Encapsulation
+
+Implementation details should remain private to the module.
+
+External code should interact with a module through its exported interface rather than importing internal files directly.
+
+This reduces coupling and simplifies future refactoring.
+
+---
+
+### Scalability
+
+The module architecture is designed for long-term growth.
+
+As StackAudit expands, new business capabilities can be introduced simply by adding new modules without restructuring the existing project.
+
+---
+
+# Planned Modules
+
+The following modules are expected to be introduced over the next development phases.
+
+## Sprint 2
+
+- Auth
+- User
+- Organization
+- Repository
+- Project
+
+---
+
+## Sprint 3
+
+- Analysis
+- Queue
+- GitHub Integration
+- AI Engine
+- Report Generation
+
+---
+
+## Sprint 4
+
+- Notifications
+- Billing
+- Dashboard
+- API Keys
+- Admin
+- Team Management
+
+---
+
+# Engineering Rules
+
+The following architectural rules should be maintained throughout development.
+
+### One Business Capability per Module
+
+A module should represent a single feature.
+
+Avoid combining unrelated responsibilities.
+
+---
+
+### Controllers Must Remain Thin
+
+Controllers should only:
+
+- Receive requests.
+- Validate inputs.
+- Call services.
+- Return responses.
+
+Business logic belongs in services.
+
+---
+
+### Services Own Business Logic
+
+Complex application behavior should be implemented inside services rather than controllers.
+
+---
+
+### Repositories Own Database Access
+
+When introduced in Sprint 2, repositories will become the only layer responsible for communicating with the database.
+
+Controllers and services should never execute database queries directly.
+
+---
+
+### Modules Should Be Loosely Coupled
+
+Whenever possible, modules should communicate through services or shared abstractions rather than importing each other's internal implementation.
+
+---
+
+# Current Limitations
+
+Since Sprint 1 focused on engineering foundations, the module system is intentionally minimal.
+
+Current limitations include:
+
+- No authentication.
+- No database integration.
+- No repositories.
+- No request validation.
+- No domain models.
+- No business workflows.
+
+These omissions are intentional and will be addressed in future sprints.
+
+---
+
+# Future Evolution
+
+By the completion of Sprint 4, the `modules/` directory will become the largest and most important part of the backend.
+
+Each module will contain:
+
+- Routes
+- Controllers
+- Services
+- Schemas
+- Repositories
+- DTOs
+- Types
+- Tests
+- Documentation
+
+The overall architecture established in Sprint 1 is expected to remain stable, with new functionality being added through additional modules rather than structural changes.
+
+---
+
+# Dependencies
+
+Current dependencies:
+
+```text
+server.ts
+        │
+        ▼
+app.ts
+        │
+        ▼
+modules/
+        │
+        ▼
+health/
+```
+
+Future dependency flow:
+
+```text
+Client
+    │
+    ▼
+Routes
+    │
+    ▼
+Controller
+    │
+    ▼
+Service
+    │
+    ▼
+Repository
+    │
+    ▼
+Database
+```
+
+This layered approach helps maintain separation of concerns while keeping business features self-contained.
+
+---
+
+# ChatGPT Resume Context
+
+**Current Status**
+
+- Feature-first module architecture has been established.
+- The Health module serves as the reference implementation for future modules.
+- The routing pipeline is fully operational.
+
+**Completed**
+
+- Module directory structure.
+- Health module integration.
+- Modular routing pattern.
+- Express integration.
+
+**Pending (Sprint 2)**
+
+- Authentication module.
+- User module.
+- Organization module.
+- Repository module.
+- Project module.
+- Database-backed business logic.
+
+**Architectural Constraint**
+
+All future backend features must be introduced as independent modules within the `modules/` directory. Avoid creating global controllers, services, or repositories outside this structure to preserve modularity and maintainability.
+
+---
+---
+
+# 17.x `apps/api/src/modules/health/`
+
+## Purpose
+
+The `health/` module is the first business module implemented in StackAudit and serves as the **reference implementation** for the project's modular backend architecture.
+
+Although its functional responsibility is simple—reporting whether the backend is operational—its architectural importance is much greater.
+
+The Health module validates that the complete request-processing pipeline is functioning correctly, including:
+
+- Express routing
+- Feature module registration
+- Controller execution
+- Service invocation
+- Response generation
+- Global middleware integration
+
+Rather than being just another endpoint, this module acts as the baseline blueprint for all future business modules.
+
+---
+
+# Why Implement a Health Module First?
+
+Every production backend requires a lightweight endpoint that can quickly indicate whether the application is running correctly.
+
+Instead of immediately implementing complex features like authentication or database access, Sprint 1 introduced the Health module to verify that the engineering foundation was working as expected.
+
+This allowed the project to validate:
+
+- Modular routing architecture.
+- Controller-service separation.
+- Middleware execution.
+- Standardized API responses.
+- Logging.
+- Application startup.
+
+By successfully implementing this module, the team confirmed that the backend architecture was ready to support future business features.
+
+---
+
+# Current Implementation (Sprint 1)
+
+The Health module currently exposes a single endpoint.
+
+```http
+GET /api/health
+```
+
+Expected response:
+
+```json
+{
+  "success": true,
+  "message": "Server is healthy",
+  "data": {
+    "status": "UP"
+  }
+}
+```
+
+This endpoint is intentionally lightweight and performs no external dependency checks during Sprint 1.
+
+Its purpose is to confirm that the HTTP server and request-processing pipeline are operational.
+
+---
+
+# Module Structure
+
+The Health module follows the architectural conventions established for all future modules.
+
+```text
+health/
+├── controller.ts
+├── service.ts
+├── routes.ts
+└── index.ts
+```
+
+### Responsibilities of Each File
+
+| File | Responsibility |
+|------|----------------|
+| `controller.ts` | Receives incoming requests and delegates processing to the service layer. |
+| `service.ts` | Contains the business logic for determining application health. |
+| `routes.ts` | Defines the HTTP endpoints exposed by the module. |
+| `index.ts` | Provides a clean public entry point for module registration. |
+
+This structure separates routing, request handling, and business logic while keeping the module self-contained.
+
+---
+
+# Architectural Decisions
+
+Several design decisions made during Sprint 1 are demonstrated by this module.
+
+### Feature Encapsulation
+
+All files related to the Health feature are located within a single directory.
+
+This improves discoverability and prevents unrelated features from becoming intertwined.
+
+---
+
+### Controller-Service Separation
+
+The controller is responsible only for HTTP concerns, while the service contains the business logic.
+
+Even though the current logic is simple, maintaining this separation from the beginning ensures that more complex features can evolve without restructuring.
+
+---
+
+### Modular Routing
+
+The Health module is mounted in `app.ts` through its exported router.
+
+This keeps the application's composition layer clean while allowing each feature to manage its own routing internally.
+
+---
+
+### Reusability
+
+The structure established here serves as the template for every future module added to the project.
+
+Developers should follow the same internal organization when implementing new features.
+
+---
+
+# Current Limitations
+
+The Health module intentionally avoids external dependencies during Sprint 1.
+
+It does **not** currently verify:
+
+- Database connectivity.
+- Redis availability.
+- Queue workers.
+- External APIs.
+- File storage.
+- AI services.
+
+As a result, a healthy response only confirms that the application itself is running.
+
+---
+
+# Planned Evolution
+
+The Health module will become more sophisticated as infrastructure is introduced.
+
+### Sprint 2
+
+- Verify PostgreSQL connection.
+- Verify Prisma initialization.
+
+---
+
+### Sprint 3
+
+- Verify Redis connectivity.
+- Verify BullMQ workers.
+- Verify GitHub integration.
+
+---
+
+### Sprint 4
+
+- Verify AI provider availability.
+- Verify object storage.
+- Verify email service.
+- Provide detailed infrastructure diagnostics.
+
+Eventually, the endpoint may expose both **liveness** and **readiness** checks suitable for container orchestration platforms such as Kubernetes.
+
+---
+
+# Engineering Rules
+
+The Health module should remain lightweight.
+
+The following guidelines should always be respected:
+
+- Do not implement business workflows here.
+- Avoid expensive operations.
+- Keep response times minimal.
+- Return deterministic responses.
+- Use this module to monitor application health, not feature functionality.
+
+These principles ensure that the endpoint remains reliable even as the application grows.
+
+---
+
+# Dependencies
+
+Current request flow:
+
+```text
+Client
+   │
+   ▼
+GET /api/health
+   │
+   ▼
+Health Router
+   │
+   ▼
+Health Controller
+   │
+   ▼
+Health Service
+   │
+   ▼
+Standardized Response
+```
+
+Future request flow:
+
+```text
+Health Service
+      │
+      ├────────► PostgreSQL
+      │
+      ├────────► Redis
+      │
+      ├────────► Queue Workers
+      │
+      ├────────► AI Providers
+      │
+      └────────► External Services
+```
+
+This evolution will allow the endpoint to provide a comprehensive view of application readiness.
+
+---
+
+# ChatGPT Resume Context
+
+### Current Status
+
+- The Health module is fully implemented.
+- It serves as the first complete feature module.
+- It validates the modular backend architecture introduced in Sprint 1.
+
+### Completed
+
+- Modular routing.
+- Controller-service separation.
+- Standardized API responses.
+- Integration with global middleware.
+
+### Pending
+
+**Sprint 2**
+
+- Database health checks.
+
+**Sprint 3**
+
+- Redis and queue health monitoring.
+
+**Sprint 4**
+
+- External dependency health diagnostics.
+- Liveness and readiness endpoints.
+- Infrastructure monitoring enhancements.
+
+### Architectural Constraint
+
+Every future feature module should mirror the organizational principles demonstrated by the Health module. While the business logic will differ, the separation between routing, controllers, services, and public exports should remain consistent across the entire backend to preserve modularity and maintainability.
+
+---
+---
+
+# 17.x `apps/api/src/utils/`
+
+## Purpose
+
+The `utils/` directory contains reusable infrastructure components that provide common functionality across the StackAudit backend.
+
+Unlike business modules, which implement domain-specific features, utilities solve generic engineering problems that can be shared by multiple parts of the application.
+
+Examples include:
+
+- Logging
+- API response formatting
+- Date utilities
+- String helpers
+- Error utilities
+- Constants
+- Generic helper functions
+
+By centralizing these reusable components, StackAudit avoids code duplication while promoting consistency throughout the codebase.
+
+---
+
+# Why a Dedicated Utility Layer?
+
+As backend applications grow, developers often encounter logic that is needed by multiple modules.
+
+Without a shared utility layer, this logic tends to be copied across controllers, services, or middleware.
+
+For example:
+
+```ts
+console.log(...)
+
+res.status(...)
+
+formatDate(...)
+
+generateUUID(...)
+```
+
+When duplicated in multiple places, these implementations become difficult to maintain and keep consistent.
+
+The `utils/` directory provides a single location for infrastructure-level functionality that is independent of any specific business feature.
+
+---
+
+# Responsibilities
+
+The utility layer is responsible for providing reusable components that can be safely consumed throughout the application.
+
+Typical responsibilities include:
+
+- Logging
+- API response helpers
+- Helper functions
+- Shared constants
+- Generic formatters
+- Utility classes
+
+Utilities should remain generic and should **not** contain business logic.
+
+---
+
+# Current Implementation (Sprint 1)
+
+At the end of Sprint 1, the utility layer contains two shared components.
+
+```text
+utils/
+├── api-response.ts
+└── logger.ts
+```
+
+### Current Responsibilities
+
+| Utility | Responsibility |
+|----------|----------------|
+| `logger.ts` | Centralized application logging |
+| `api-response.ts` | Standardized API response formatting |
+
+These utilities establish reusable engineering patterns that future modules will rely upon.
+
+---
+
+# Architectural Decisions
+
+Several engineering decisions influenced the design of the utility layer.
+
+## Generic by Design
+
+Utilities should solve infrastructure problems rather than domain problems.
+
+For example:
+
+✅ Logger
+
+✅ Response formatter
+
+❌ User authentication
+
+❌ Repository analysis
+
+Those belong inside feature modules.
+
+---
+
+## Stateless Components
+
+Utilities should generally remain stateless.
+
+They should not maintain application state or depend on feature-specific information.
+
+This improves predictability, reusability, and testability.
+
+---
+
+## Shared Infrastructure
+
+Every feature module is allowed to depend on utilities.
+
+However, utilities should never depend on feature modules.
+
+Dependency direction should always remain:
+
+```text
+Feature Modules
+       │
+       ▼
+Utilities
+```
+
+Never:
+
+```text
+Utilities
+      │
+      ▼
+Feature Modules
+```
+
+This prevents circular dependencies and preserves clean architecture.
+
+---
+
+# Current Limitations
+
+The utility layer is intentionally small during Sprint 1.
+
+Currently missing:
+
+- UUID helpers
+- Date formatting
+- Pagination utilities
+- Error classes
+- Custom exceptions
+- Validation helpers
+- Shared constants
+- Encryption utilities
+
+These will be introduced only when justified by real application requirements.
+
+---
+
+# Planned Evolution
+
+As StackAudit grows, additional utilities may include:
+
+## Sprint 2
+
+- Pagination helpers
+- DTO mappers
+- Custom error classes
+- Validation utilities
+
+---
+
+## Sprint 3
+
+- GitHub utilities
+- AI prompt builders
+- Queue helpers
+- Cache helpers
+
+---
+
+## Sprint 4
+
+- Audit utilities
+- Metrics helpers
+- Analytics utilities
+- Performance measurement
+- Feature flag helpers
+
+The utility layer should evolve gradually, avoiding unnecessary abstraction until there is a clear need.
+
+---
+
+# Engineering Rules
+
+The following principles should always be followed when adding new utilities.
+
+### Keep Utilities Generic
+
+A utility should solve a problem that is applicable across multiple modules.
+
+If it is specific to one feature, it belongs inside that feature module.
+
+---
+
+### Avoid Business Logic
+
+Utilities should never implement application workflows.
+
+Business decisions belong inside services.
+
+---
+
+### Minimize Dependencies
+
+Utilities should remain lightweight and avoid unnecessary coupling with external libraries unless they provide significant value.
+
+---
+
+### Prevent Circular Dependencies
+
+Feature modules may depend on utilities.
+
+Utilities must never depend on feature modules.
+
+---
+
+# Future Directory Structure
+
+As the project expands, the utility layer may evolve into:
+
+```text
+utils/
+├── logger.ts
+├── api-response.ts
+├── pagination.ts
+├── uuid.ts
+├── errors.ts
+├── constants.ts
+├── crypto.ts
+├── dates.ts
+├── strings.ts
+└── validation.ts
+```
+
+New utilities should only be introduced when there is clear evidence of repeated code or shared infrastructure needs.
+
+---
+
+# ChatGPT Resume Context
+
+## Current Status
+
+- Utility layer established.
+- Centralized logging implemented.
+- Standardized API responses implemented.
+
+## Completed
+
+- Shared infrastructure directory.
+- Logger abstraction.
+- API response helper.
+
+## Pending
+
+**Sprint 2**
+
+- Pagination utilities.
+- Error classes.
+- Validation helpers.
+
+**Sprint 3**
+
+- Queue utilities.
+- AI utilities.
+- GitHub helpers.
+
+**Sprint 4**
+
+- Analytics.
+- Metrics.
+- Performance helpers.
+
+## Architectural Constraint
+
+The `utils/` directory should remain an infrastructure layer. Any code that contains business rules, domain concepts, or feature-specific behavior must be placed inside the appropriate module instead of the utility layer. This separation is essential to maintaining a clean and scalable architecture.
+
+---
+---
+
 
 
 
