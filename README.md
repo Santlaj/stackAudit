@@ -1,252 +1,275 @@
-# stackAudit
+# StackAudit
 
-> Making open source more discoverable, understandable, and accessible.
+> **Making open source more discoverable, understandable, and accessible.**
 
 StackAudit is an engineering intelligence platform designed to simplify open-source contribution by transforming raw GitHub data into meaningful insights.
 
 For many developers, contributing to open source is overwhelming. Finding the right repository, understanding unfamiliar codebases, identifying beginner-friendly issues, and estimating the likelihood of pull request acceptance often require hours of manual research.
 
-StackAudit reduces that friction by helping developers discover suitable repositories, evaluate project health, understand repository architecture, and receive AI-assisted guidance before making their first contribution.
+StackAudit aims to reduce that friction by helping developers discover suitable repositories, evaluate project health, understand repository architecture, and receive AI-assisted guidance before making their first contribution.
 
-The platform also establishes a foundation for engineering intelligence, enabling future products such as recruiter-focused portfolio evaluation and developer analytics.
+The platform is being engineered as a long-term foundation for future developer tools, including recruiter-focused portfolio evaluation, engineering analytics, and AI-powered repository intelligence.
 
 ---
 
-## Vision
+## 🚧 Development Status
+
+**Current Phase:** Sprint 1 — Engineering Foundation
+
+StackAudit is currently under active development.
+
+The engineering foundation and monorepo architecture have been established. Core backend infrastructure is the next milestone before business functionality is introduced.
+
+---
+
+# Vision
 
 To become the most trusted platform for discovering, understanding, and contributing to open-source software.
 
 ---
 
-## Mission
+# Mission
 
 Reduce the barrier to open-source contribution by transforming GitHub data into actionable engineering insights.
 
 ---
 
-## Engineering Philosophy
+# Engineering Philosophy
 
-StackAudit is not being built as a college project.
+StackAudit is **not** being built as a typical college project.
 
-It is being developed as if it were a production-grade software platform, following professional software engineering practices from the very beginning.
+It is being engineered using production-oriented software engineering practices from day one.
 
-Every architectural decision is documented.
+The project follows a **documentation-first** approach where architecture, engineering decisions, and implementation strategy are established before writing production code.
 
-Every module is designed before implementation.
+Every significant engineering decision is documented through Architecture Decision Records (ADRs), ensuring the project remains maintainable, scalable, and easy to evolve over time.
 
-Every important technical decision is justified through Architecture Decision Records (ADRs).
-
-The goal is not simply to build software—it is to engineer software that is scalable, maintainable, and thoughtfully designed.
+The objective is not simply to build software—it is to engineer software that can grow into a production-grade platform.
 
 ---
 
-## Long-Term Vision
+# Technology Stack
 
-StackAudit is being designed as a platform.
+## Frontend
 
-The first product focuses on helping developers discover and contribute to open source.
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
 
-Future products will leverage the same engineering platform to provide recruiter intelligence, developer portfolio analytics, and engineering quality assessment.
+## Backend
+
+- Node.js
+- Express
+- TypeScript
+
+## Database
+
+- PostgreSQL
+- Prisma ORM
+
+## Authentication
+
+- Better Auth
+
+## Infrastructure
+
+- Redis
+- BullMQ
+- Docker
+
+## Development
+
+- pnpm Workspaces
+- Turborepo
+- GitHub Actions
+
+---
+
+# Repository Structure
+
+```text
+StackAudit/
+│
+├── .github/
+│   └── workflows/
+│
+├── apps/
+│   ├── api/
+│   └── web/
+│
+├── packages/
+│   ├── config/
+│   ├── eslint-config/
+│   ├── shared/
+│   ├── tsconfig/
+│   ├── types/
+│   └── ui/
+│
+├── docker/
+├── docs/
+├── scripts/
+├── tests/
+│
+├── package.json
+├── pnpm-workspace.yaml
+├── turbo.json
+└── README.md
+```
+
+The project follows a **Turborepo-based monorepo architecture**, separating deployable applications from reusable workspace packages while keeping the codebase scalable and maintainable.
+
+---
+
+# Current Progress
+
+## ✅ Completed
+
+### Repository Foundation
+
+- Monorepo architecture established
+- Repository reorganized for scalability
+- pnpm workspace configured
+- Turborepo configured
+- Root workspace configuration completed
+
+### Frontend Foundation
+
+- Next.js application initialized
+- TypeScript configured
+- Tailwind CSS configured
+- App Router enabled
+- Initial production build verified
+
+### Documentation
+
+- Engineering Handbook
+- Architecture documentation
+- Product documentation
+- Repository reference
+- Development journal
+
+---
+
+## 🚧 Currently In Progress
+
+Sprint 1 continues with the backend engineering foundation.
+
+Upcoming work includes:
+
+- Express backend initialization
+- Shared TypeScript configuration
+- Shared ESLint configuration
+- Environment validation
+- Global middleware
+- Logging
+- Health API
+- Docker configuration
+- Local development verification
+
+---
+
+# Engineering Principles
+
+StackAudit follows several core engineering principles:
+
+- Documentation First
+- Architecture Before Implementation
+- Clean Architecture
+- Modular Design
+- SOLID Principles
+- Separation of Concerns
+- Type Safety
+- Reusable Workspace Packages
+- Scalability over Shortcuts
+- Maintainability over Cleverness
 
 ---
 
 # Roadmap
 
-The StackAudit project is divided into four major engineering sprints. Each sprint builds upon the previous one, ensuring that the project grows on a stable and maintainable foundation.
+## 🚧 Sprint 1 — Engineering Foundation
+
+Current objective:
+
+- Backend initialization
+- Shared tooling
+- Docker setup
+- Environment validation
+- Health API
+- Development workflow
 
 ---
 
-## ✅ Sprint 1 — Engineering Foundation (Completed)
+## ⏳ Sprint 2 — Core Backend Development
 
-**Status:** Completed
-
-Sprint 1 focused entirely on establishing a production-ready engineering foundation before implementing business functionality.
-
-### Repository & Monorepo
-
-- ✅ Initialized pnpm Workspace
-- ✅ Configured Turborepo
-- ✅ Established monorepo architecture
-- ✅ Organized repository structure
-- ✅ Created shared workspace packages
-
-### Backend Foundation
-
-- ✅ Express.js application
-- ✅ TypeScript configuration
-- ✅ Environment configuration
-- ✅ Configuration validation using Zod
-- ✅ Health module
-- ✅ Standardized API responses
-- ✅ Centralized logging
-- ✅ Global middleware
-- ✅ Error handling
-- ✅ Bootstrap architecture (`server.ts` & `app.ts`)
-
-### Frontend Foundation
-
-- ✅ Next.js application
-- ✅ TypeScript setup
-- ✅ Initial project structure
-
-### Engineering Tooling
-
-- ✅ Shared ESLint package
-- ✅ Shared TypeScript package
-- ✅ Prettier configuration
-- ✅ Git configuration
-- ✅ Repository-wide linting
-- ✅ Repository-wide type checking
-- ✅ Production build verification
-
-### Documentation
-
-- ✅ Engineering Handbook
-- ✅ Repository reference
-- ✅ Sprint documentation
+- PostgreSQL integration
+- Prisma ORM
+- Better Auth
+- User management
+- Organization management
+- Repository module
+- Project module
+- Analysis request module
+- Testing infrastructure
 
 ---
 
-## 🚧 Sprint 2 — Core Backend Development
+## ⏳ Sprint 3 — AI Analysis Engine
 
-**Status:** Planned (Next Sprint)
-
-Sprint 2 focuses on transforming the backend foundation into a fully functional application.
-
-### Database Layer
-
-- ⬜ PostgreSQL integration
-- ⬜ Prisma ORM setup
-- ⬜ Database migrations
-- ⬜ Repository layer
-- ⬜ Database seed scripts
-
-### Authentication & Security
-
-- ⬜ Better Auth integration
-- ⬜ Session management
-- ⬜ Role-based authorization
-- ⬜ Protected routes
-- ⬜ Security middleware
-
-### Core Modules
-
-- ⬜ User module
-- ⬜ Organization module
-- ⬜ Repository module
-- ⬜ Project module
-- ⬜ Analysis request module
-
-### Backend Improvements
-
-- ⬜ Request validation
-- ⬜ Response pagination
-- ⬜ Repository pattern
-- ⬜ Error improvements
-- ⬜ API versioning
-
-### Testing
-
-- ⬜ Unit testing setup
-- ⬜ Integration testing
-- ⬜ API testing
+- GitHub integration
+- Repository cloning
+- Source code parsing
+- AI-powered repository analysis
+- Security auditing
+- Code quality scoring
+- Redis
+- BullMQ
+- Background workers
 
 ---
 
-## ⏳ Sprint 3 — AI Analysis Engine & Infrastructure
+## ⏳ Sprint 4 — Production Platform
 
-**Status:** Planned
-
-Sprint 3 introduces the core intelligence of StackAudit.
-
-### Repository Analysis
-
-- ⬜ GitHub integration
-- ⬜ Repository cloning
-- ⬜ Source code parsing
-- ⬜ File indexing
-- ⬜ Repository metadata extraction
-
-### AI Engine
-
-- ⬜ AI-powered code analysis
-- ⬜ Security analysis
-- ⬜ Maintainability analysis
-- ⬜ Code quality scoring
-- ⬜ Repository health reports
-
-### Infrastructure
-
-- ⬜ Redis integration
-- ⬜ BullMQ
-- ⬜ Background workers
-- ⬜ Job scheduling
-- ⬜ Queue management
-
-### Performance
-
-- ⬜ Caching
-- ⬜ Rate limiting
-- ⬜ Performance optimization
-- ⬜ Monitoring
-
----
-
-## 🔮 Sprint 4 — Production Platform & Scaling
-
-**Status:** Planned
-
-Sprint 4 focuses on transforming StackAudit into a production-ready SaaS platform.
-
-### Dashboard
-
-- ⬜ Interactive dashboard
-- ⬜ Repository analytics
-- ⬜ Historical reports
-- ⬜ Trend visualization
-
-### Notifications
-
-- ⬜ Email notifications
-- ⬜ In-app notifications
-- ⬜ Analysis completion alerts
-
-### Organizations
-
-- ⬜ Multi-tenant organizations
-- ⬜ Team management
-- ⬜ Invitations
-- ⬜ Workspace management
-
-### Platform Features
-
-- ⬜ Subscription system
-- ⬜ Billing integration
-- ⬜ Usage limits
-- ⬜ API keys
-- ⬜ Public API
-
-### Deployment
-
-- ⬜ Docker deployment
-- ⬜ CI/CD pipeline
-- ⬜ Production monitoring
-- ⬜ Automated backups
-- ⬜ Cloud deployment
+- Interactive dashboard
+- Repository analytics
+- Organization workspaces
+- Notifications
+- Billing
+- API keys
+- CI/CD
+- Cloud deployment
+- Production monitoring
 
 ---
 
 # Long-Term Vision
 
-After the completion of all four sprints, StackAudit will provide:
+After all planned milestones, StackAudit aims to provide:
 
 - AI-powered repository analysis
-- Automated security auditing
-- Code quality assessment
-- Maintainability reports
-- Organization & team management
+- Open-source contribution guidance
+- Repository health assessment
+- Security auditing
+- Code quality evaluation
+- Engineering intelligence
 - Historical analytics
-- Background analysis engine
-- Modern SaaS architecture
-- Production-ready infrastructure
-- Scalable monorepo architecture
+- Organization management
+- Scalable SaaS architecture
+
+---
+
+# Contributing
+
+The project is currently in active development.
+
+Contribution guidelines will be published once the engineering foundation has been completed.
+
+---
+
+# License
+
+This project is licensed under the MIT License.
+
+See the [LICENSE](LICENSE) file for details.
