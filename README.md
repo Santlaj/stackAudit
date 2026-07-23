@@ -1,6 +1,6 @@
 # StackAudit
 
-> **Making open source more discoverable, understandable, and accessible.**
+> **Making open source more discoverable, understandable, and accessiblee.**
 
 StackAudit is an engineering intelligence platform designed to simplify open-source contribution by transforming raw GitHub data into meaningful insights.
 
