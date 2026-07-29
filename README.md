@@ -12,13 +12,25 @@ The platform is being engineered as a long-term foundation for future developer 
 
 ---
 
+![Status](https://img.shields.io/badge/status-active%20development-blue)
+![Sprint](https://img.shields.io/badge/Sprint-2%20In%20Progress-orange)
+![License](https://img.shields.io/badge/license-MIT-green)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs)
+![Express](https://img.shields.io/badge/Express-5-black?logo=express)
+![Turborepo](https://img.shields.io/badge/Turborepo-Monorepo-red?logo=turborepo)
+
+---
+
 ## 🚧 Development Status
 
-**Current Phase:** Sprint 1 — Engineering Foundation
+**Current Phase:** Sprint 2 — Core Backend Development
 
-StackAudit is currently under active development.
+Sprint 1 has been successfully completed, establishing the engineering foundation of StackAudit.
 
-The engineering foundation and monorepo architecture have been established. Core backend infrastructure is the next milestone before business functionality is introduced.
+The project now includes a production-ready monorepo architecture, frontend and backend foundations, shared tooling, development workflows, and comprehensive engineering documentation.
+
+Development is now focused on implementing the platform's core backend modules, database integration, authentication, and repository analysis capabilities.
 
 ---
 
@@ -122,51 +134,86 @@ The project follows a **Turborepo-based monorepo architecture**, separating depl
 
 ---
 
-# Current Progress
+# Architecture
 
-## ✅ Completed
+StackAudit follows a **Turborepo-based monorepo architecture** designed for long-term scalability.
 
-### Repository Foundation
+The repository is organised into two primary layers:
 
-- Monorepo architecture established
-- Repository reorganized for scalability
-- pnpm workspace configured
-- Turborepo configured
-- Root workspace configuration completed
+- **Applications (`apps/`)** — Deployable services such as the Express API and Next.js frontend.
+- **Shared Packages (`packages/`)** — Reusable TypeScript configurations, ESLint rules, shared utilities, common types, and UI components.
 
-### Frontend Foundation
+This architecture promotes:
 
-- Next.js application initialized
-- TypeScript configured
-- Tailwind CSS configured
-- App Router enabled
-- Initial production build verified
-
-### Documentation
-
-- Engineering Handbook
-- Architecture documentation
-- Product documentation
-- Repository reference
-- Development journal
+- Clear separation of concerns
+- Reusable shared packages
+- Consistent tooling across applications
+- Independent application development
+- Long-term scalability
 
 ---
 
-## 🚧 Currently In Progress
+# Current Progress
 
-Sprint 1 continues with the backend engineering foundation.
+## ✅ Sprint 1 Completed
 
-Upcoming work includes:
+Sprint 1 established the engineering foundation of StackAudit by building a scalable monorepo architecture, initializing frontend and backend applications, configuring shared tooling, and documenting the project's engineering decisions.
 
-- Express backend initialization
-- Shared TypeScript configuration
-- Shared ESLint configuration
-- Environment validation
-- Global middleware
-- Logging
-- Health API
-- Docker configuration
-- Local development verification
+### Repository Foundation
+
+- ✅ Turborepo monorepo architecture
+- ✅ pnpm workspace configuration
+- ✅ Repository restructured for scalability
+- ✅ Shared workspace packages
+- ✅ Root workspace configuration
+
+### Backend Foundation
+
+- ✅ Express.js application
+- ✅ TypeScript configuration
+- ✅ Environment configuration
+- ✅ Environment validation using Zod
+- ✅ Health module
+- ✅ Global middleware
+- ✅ Standardized API responses
+- ✅ Centralized logging
+- ✅ Global error handling
+- ✅ Bootstrap architecture (`app.ts` & `server.ts`)
+
+### Frontend Foundation
+
+- ✅ Next.js application
+- ✅ React + TypeScript
+- ✅ Tailwind CSS
+- ✅ App Router
+- ✅ Initial project structure
+- ✅ Production build verification
+
+### Shared Tooling
+
+- ✅ Shared TypeScript configuration
+- ✅ Shared ESLint configuration
+- ✅ Prettier configuration
+- ✅ Repository-wide linting
+- ✅ Repository-wide type checking
+- ✅ Workspace build verification
+
+### Documentation
+
+- ✅ Engineering Handbook
+- ✅ Product documentation
+- ✅ Architecture documentation
+- ✅ Architecture Decision Records (ADRs)
+- ✅ Repository documentation
+- ✅ Development journal
+
+---
+
+## 🚧 Current Focus
+
+Sprint 2 — Core Backend Development
+
+The engineering foundation is complete. Development is now focused on implementing business logic, database integration, authentication, and repository analysis services.
 
 ---
 
@@ -177,7 +224,7 @@ StackAudit follows several core engineering principles:
 - Documentation First
 - Architecture Before Implementation
 - Clean Architecture
-- Modular Design
+- Modular Monolith Architecture
 - SOLID Principles
 - Separation of Concerns
 - Type Safety
@@ -189,64 +236,118 @@ StackAudit follows several core engineering principles:
 
 # Roadmap
 
-## 🚧 Sprint 1 — Engineering Foundation
+## ✅ Sprint 1 — Engineering Foundation
 
-Current objective:
+**Status:** Completed
 
-- Backend initialization
-- Shared tooling
-- Docker setup
-- Environment validation
-- Health API
-- Development workflow
+Sprint 1 established the technical foundation of StackAudit.
+
+### Deliverables
+
+- ✅ Monorepo architecture
+- ✅ Backend foundation
+- ✅ Frontend foundation
+- ✅ Shared workspace packages
+- ✅ Shared tooling
+- ✅ Development workflow
+- ✅ Engineering documentation
+- ✅ Production build verification
 
 ---
 
-## ⏳ Sprint 2 — Core Backend Development
+## 🚧 Sprint 2 — Core Backend Development
 
-- PostgreSQL integration
-- Prisma ORM
-- Better Auth
-- User management
-- Organization management
-- Repository module
-- Project module
-- Analysis request module
-- Testing infrastructure
+**Status:** In Progress
+
+### Database
+
+- ⬜ PostgreSQL integration
+- ⬜ Prisma ORM
+- ⬜ Database migrations
+- ⬜ Repository layer
+
+### Authentication
+
+- ⬜ Better Auth integration
+- ⬜ Session management
+- ⬜ Role-based authorization
+
+### Core Modules
+
+- ⬜ User module
+- ⬜ Organization module
+- ⬜ Repository module
+- ⬜ Project module
+- ⬜ Analysis Request module
+
+### Backend Improvements
+
+- ⬜ Request validation
+- ⬜ Repository pattern
+- ⬜ API versioning
+- ⬜ Testing infrastructure
 
 ---
 
 ## ⏳ Sprint 3 — AI Analysis Engine
 
-- GitHub integration
-- Repository cloning
-- Source code parsing
-- AI-powered repository analysis
-- Security auditing
-- Code quality scoring
-- Redis
-- BullMQ
-- Background workers
+### Repository Analysis
+
+- ⬜ GitHub integration
+- ⬜ Repository cloning
+- ⬜ Source code parsing
+- ⬜ Repository indexing
+- ⬜ Metadata extraction
+
+### AI Engine
+
+- ⬜ AI-powered repository analysis
+- ⬜ Code quality assessment
+- ⬜ Security auditing
+- ⬜ Maintainability scoring
+- ⬜ Repository health reports
+
+### Infrastructure
+
+- ⬜ Redis integration
+- ⬜ BullMQ
+- ⬜ Background workers
+- ⬜ Job scheduling
+- ⬜ Queue management
 
 ---
 
 ## ⏳ Sprint 4 — Production Platform
 
-- Interactive dashboard
-- Repository analytics
-- Organization workspaces
-- Notifications
-- Billing
-- API keys
-- CI/CD
-- Cloud deployment
-- Production monitoring
+### Dashboard
+
+- ⬜ Interactive dashboard
+- ⬜ Repository analytics
+- ⬜ Historical insights
+- ⬜ Trend visualisation
+
+### Organizations
+
+- ⬜ Multi-tenant workspaces
+- ⬜ Team management
+- ⬜ Invitations
+- ⬜ Workspace management
+
+### Platform
+
+- ⬜ Notifications
+- ⬜ Billing
+- ⬜ API Keys
+- ⬜ Public API
+- ⬜ Docker deployment
+- ⬜ CI/CD
+- ⬜ Production monitoring
 
 ---
 
 # Long-Term Vision
 
-After all planned milestones, StackAudit aims to provide:
+Upon completion of all planned milestones, StackAudit will provide:
 
 - AI-powered repository analysis
 - Open-source contribution guidance
@@ -255,16 +356,18 @@ After all planned milestones, StackAudit aims to provide:
 - Code quality evaluation
 - Engineering intelligence
 - Historical analytics
-- Organization management
-- Scalable SaaS architecture
+- Organization & team management
+- Background processing infrastructure
+- Modern SaaS architecture
+- Production-ready deployment pipeline
 
 ---
 
 # Contributing
 
-The project is currently in active development.
+The project is currently under active development.
 
-Contribution guidelines will be published once the engineering foundation has been completed.
+Contribution guidelines will be published once the core backend architecture and development workflow have stabilised.
 
 ---
 
