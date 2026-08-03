@@ -367,8 +367,6 @@ Upon completion of all planned milestones, StackAudit will provide:
 
 The project is currently under active development.
 
-Contribution guidelines will be published once the core backend architecture and development workflow have stabilised.
-
 ---
 
 # License
