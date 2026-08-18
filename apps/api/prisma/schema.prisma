@@ -22,6 +22,7 @@ model user {
 
   sessions      session[]
   accounts      account[]
+  audits        audit[]
 
   @@map("users")
 }
@@ -72,4 +73,23 @@ model verification {
   updatedAt  DateTime? @updatedAt
 
   @@map("verifications")
+}
+
+// ─── StackAudit Core Tables ─────────────────────────
+
+model audit {
+  id            String   @id @default(uuid())
+  repository    String   // e.g., "facebook/react"
+  status        String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  report        String?  // The Markdown output from Groq
+  error         String?  // Error message if the job fails
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userId        String?  // Optional for anonymous scans, required if we want to restrict later
+  user          user?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([repository])
+  @@map("audits")
 }
