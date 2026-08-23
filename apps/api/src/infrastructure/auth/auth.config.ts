@@ -21,6 +21,8 @@ export const auth = betterAuth({
     },
   },
 
+  trustedOrigins: ["http://localhost:3000"],
+
   session: {
     // Session token lives for 7 days.
     expiresIn: 60 * 60 * 24 * 7,
