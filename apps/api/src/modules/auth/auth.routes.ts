@@ -49,6 +49,7 @@ authRouter.use(async (req, res, next) => {
 
     const headers = new Headers();
     Object.entries(req.headers).forEach(([key, val]) => {
+      if (key.toLowerCase() === "content-length") return; // Let it be recalculated
       if (Array.isArray(val)) {
         val.forEach(v => headers.append(key, v));
       } else if (val) {
@@ -71,10 +72,14 @@ authRouter.use(async (req, res, next) => {
 
     if (response) {
       res.status(response.status);
+      
+      const setCookies = response.headers.getSetCookie();
+      for (const cookie of setCookies) {
+        res.append("Set-Cookie", cookie);
+      }
+
       response.headers.forEach((value, key) => {
-        if (key.toLowerCase() === "set-cookie") {
-          res.append("Set-Cookie", value);
-        } else {
+        if (key.toLowerCase() !== "set-cookie") {
           res.setHeader(key, value);
         }
       });

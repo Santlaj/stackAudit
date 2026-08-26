@@ -45,7 +45,7 @@ export class DiscoveryController {
       const { matchId } = req.params;
       const account = await prisma.account.findFirst({ where: { userId: req.user!.id, providerId: "github" } });
       const githubToken = account?.accessToken || "";
-      const match = await discoveryService.evaluateMatchContext(matchId, githubToken);
+      const match = await discoveryService.evaluateMatchContext(matchId as string, githubToken);
       successResponse(res, match, "Match evaluated successfully", 200);
     } catch (error) {
       next(error);

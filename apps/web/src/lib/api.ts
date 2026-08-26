@@ -36,11 +36,25 @@ export interface IssueMatch {
 
 // --- API Calls ---
 
-export async function fetchProfile(userId: string): Promise<DeveloperProfile> {
-  const res = await fetch(`${API_BASE}/api/discovery/profile/${userId}`, {
+export async function fetchProfile(userId?: string): Promise<DeveloperProfile> {
+  // Using the new secure endpoint that doesn't rely on client-provided userId if omitted
+  const url = userId ? `${API_BASE}/api/discovery/profile/${userId}` : `${API_BASE}/api/users/profile`;
+  const res = await fetch(url, {
     credentials: "include",
   });
   if (!res.ok) throw new Error("Failed to fetch profile");
+  const json = await res.json();
+  return json.data;
+}
+
+export async function updateProfile(userId: string, data: Partial<DeveloperProfile>): Promise<DeveloperProfile> {
+  const res = await fetch(`${API_BASE}/api/users/profile`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update profile");
   const json = await res.json();
   return json.data;
 }

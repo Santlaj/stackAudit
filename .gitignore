@@ -89,3 +89,14 @@ docker/*.env
 # =========================
 *.swp
 *.swo
+
+# =========================
+# Graphify
+# =========================
+.graphify-venv/
+graphify-out/
+
+# =========================
+# System Generated
+# =========================
+implementation_plan.md

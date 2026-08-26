@@ -93,14 +93,13 @@ export class ProfileService {
     preferredComplexity?: string;
     preferredContributionTypes?: string[];
   }) {
-    const profileExists = await prisma.developer_profile.findUnique({ where: { userId } });
-    if (!profileExists) {
-      throw new AppError("Developer profile not found. Please ingest GitHub profile first.", 404, "PROFILE_NOT_FOUND");
-    }
-
-    return prisma.developer_profile.update({
+    return prisma.developer_profile.upsert({
       where: { userId },
-      data,
+      update: data,
+      create: {
+        userId,
+        ...data,
+      },
     } as any);
   }
 

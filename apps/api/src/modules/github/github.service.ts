@@ -7,6 +7,9 @@ export class GithubService {
    * Fetch the authenticated user's profile information
    */
   async getAuthenticatedUser(token: string) {
+    if (!token) {
+      throw new AppError("A valid GitHub token is required for this operation", 401, "GITHUB_UNAUTHORIZED");
+    }
     try {
       const client = createGithubClient(token);
       const { data } = await client.users.getAuthenticated();
@@ -29,6 +32,9 @@ export class GithubService {
    * Fetch repositories for the authenticated user to infer skills
    */
   async getUserRepositories(token: string, perPage = 30) {
+    if (!token) {
+      throw new AppError("A valid GitHub token is required for this operation", 401, "GITHUB_UNAUTHORIZED");
+    }
     try {
       const client = createGithubClient(token);
       const { data } = await client.repos.listForAuthenticatedUser({

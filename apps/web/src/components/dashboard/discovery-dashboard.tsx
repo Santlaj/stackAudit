@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertCircle, RefreshCw, Github, Zap } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, AlertCircle, RefreshCw, Github, CheckSquare, Square, Check, Cpu, Code2, ArrowRight, ExternalLink } from "lucide-react";
 import { 
   DeveloperProfile, 
   IssueMatch, 
@@ -23,14 +24,14 @@ export function DiscoveryDashboard() {
   const [loading, setLoading] = useState(false);
   const [evaluating, setEvaluating] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
+  const [selectedMatch, setSelectedMatch] = useState<IssueMatch | null>(null);
 
   // User Preferences State
   const [selectedTech, setSelectedTech] = useState<string[]>([]);
   const [difficulty, setDifficulty] = useState<string>("beginner");
 
-  const AVAILABLE_TECH = ["TypeScript", "Python", "Rust", "React", "Node.js", "Go"];
+  const AVAILABLE_TECH = ["TypeScript", "Python", "Rust", "React", "Node.js", "Go", "Java", "C++"];
 
-  // Initial load
   useEffect(() => {
     if (session?.user?.id) {
       loadData(session.user.id);
@@ -40,8 +41,10 @@ export function DiscoveryDashboard() {
   const loadData = async (userId: string) => {
     setLoading(true);
     try {
-      // Attempt to load matches first if profile fails we still have a blank slate
-      const p = await fetchProfile(userId).catch(() => null);
+      let p = await fetchProfile(userId).catch(() => null);
+      if (!p) {
+        p = await ingestProfile().catch(() => null);
+      }
       if (p) {
         setProfile(p);
         const m = await getMatches(userId).catch(() => []);
@@ -59,11 +62,10 @@ export function DiscoveryDashboard() {
     setLoading(true);
     setError(null);
     try {
-      // NOTE: This will fail if Prisma migrate reset wasn't run!
       const p = await ingestProfile();
       setProfile(p);
     } catch (err: any) {
-      setError("Failed to ingest profile. Did you run `npx prisma migrate reset`?");
+      setError("Failed to sync profile from GitHub.");
     } finally {
       setLoading(false);
     }
@@ -73,6 +75,7 @@ export function DiscoveryDashboard() {
     if (!session?.user?.id) return;
     setLoading(true);
     setError(null);
+    setSelectedMatch(null);
     try {
       await discoverIssues(session.user.id, selectedTech, difficulty);
       const m = await getMatches(session.user.id);
@@ -89,6 +92,9 @@ export function DiscoveryDashboard() {
     try {
       const updatedMatch = await evaluateMatch(matchId);
       setMatches(prev => prev.map(m => m.id === matchId ? updatedMatch : m));
+      if (selectedMatch?.id === matchId) {
+        setSelectedMatch(updatedMatch);
+      }
     } catch (err: any) {
       console.error("Evaluation failed", err);
     } finally {
@@ -96,180 +102,264 @@ export function DiscoveryDashboard() {
     }
   };
 
+  const toggleTech = (tech: string) => {
+    setSelectedTech(prev => prev.includes(tech) ? prev.filter(t => t !== tech) : [...prev, tech]);
+  };
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="flex flex-col lg:flex-row items-start gap-6 animate-in fade-in duration-500 w-full">
       
-      {error && (
-        <div className="bg-destructive/10 text-destructive border border-destructive/20 rounded-md p-4 flex items-start gap-3 text-sm">
-          <AlertCircle className="h-5 w-5 mt-0.5" />
-          <p>{error}</p>
-        </div>
-      )}
-
-      {/* Developer Profile Header */}
-      <section className="border border-border/40 rounded-lg p-6 bg-card flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight mb-1">Developer Identity</h2>
-          {profile ? (
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">Observed Skills:</span>{" "}
-                {profile.observedLanguages?.length > 0 ? profile.observedLanguages.join(", ") : "None detected"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">GitHub Activity:</span>{" "}
-                {profile.publicRepoCount} public repos
-              </p>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No profile found. Sync your GitHub to start discovering issues.</p>
-          )}
-        </div>
-      </section>
+      {/* LEFT COLUMN: Context & Filters */}
+      <div className="w-full lg:w-64 shrink-0 flex flex-col gap-6 sticky top-6">
         
-      {/* Preferences Panel */}
-      <section className="border border-border/40 rounded-lg p-6 bg-card">
-        <div className="mb-6">
-          <h3 className="text-base font-semibold tracking-tight">Contribution Preferences</h3>
-          <p className="text-sm text-muted-foreground mt-1">Refine what kind of issues you want to work on.</p>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>
-            <label className="text-sm font-medium mb-3 block">Technology Stack</label>
-            <div className="flex flex-wrap gap-2">
-              {AVAILABLE_TECH.map(tech => (
-                <button
-                  key={tech}
-                  onClick={() => {
-                    setSelectedTech(prev => 
-                      prev.includes(tech) ? prev.filter(t => t !== tech) : [...prev, tech]
-                    );
-                  }}
-                  className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
-                    selectedTech.includes(tech) 
-                      ? "bg-primary text-primary-foreground border-primary" 
-                      : "bg-transparent text-muted-foreground border-border/50 hover:border-border"
-                  }`}
-                >
-                  {tech}
-                </button>
-              ))}
-            </div>
+        {/* Developer Identity Panel */}
+        <section>
+          <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Developer Context</h2>
+          <div className="space-y-4 text-sm">
+            {profile ? (
+              <>
+                <div>
+                  <div className="text-muted-foreground mb-0.5">Observed Languages</div>
+                  <div className="font-medium text-foreground">
+                    {profile.observedLanguages?.length > 0 ? profile.observedLanguages.join(", ") : "None detected"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground mb-0.5">GitHub Footprint</div>
+                  <div className="font-medium text-foreground">{profile.publicRepoCount} public repositories</div>
+                </div>
+              </>
+            ) : (
+              <div className="text-muted-foreground py-2 border border-dashed border-border/60 rounded p-3 text-center">
+                <p className="mb-3 text-xs">No context established.</p>
+                <Button variant="outline" size="sm" onClick={handleIngestProfile} disabled={loading} className="w-full h-7 text-xs">
+                  <Github className="w-3 h-3 mr-2" /> Sync Profile
+                </Button>
+              </div>
+            )}
           </div>
-          
-          <div>
-            <label className="text-sm font-medium mb-3 block">Complexity Level</label>
-            <div className="flex flex-wrap gap-2">
-              {["beginner", "intermediate", "advanced"].map(level => (
-                <button
-                  key={level}
-                  onClick={() => setDifficulty(level)}
-                  className={`text-xs px-3 py-1.5 rounded-md border capitalize transition-colors ${
-                    difficulty === level 
-                      ? "bg-primary text-primary-foreground border-primary" 
-                      : "bg-transparent text-muted-foreground border-border/50 hover:border-border"
-                  }`}
-                >
-                  {level === "beginner" ? "Beginner (Good First Issue)" : level}
-                </button>
-              ))}
+        </section>
+
+        {/* Contribution Preferences Panel */}
+        <section className="pt-4 border-t border-border/40">
+          <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Search Parameters</h2>
+          <div className="space-y-5">
+            
+            <div>
+              <label className="text-xs font-medium text-foreground mb-2 block">Target Technologies</label>
+              <div className="space-y-1.5">
+                {AVAILABLE_TECH.map(tech => (
+                  <button 
+                    key={tech} 
+                    onClick={() => toggleTech(tech)}
+                    className="flex items-center gap-2 text-xs w-full text-left hover:text-foreground transition-colors group"
+                  >
+                    {selectedTech.includes(tech) ? (
+                      <CheckSquare className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <Square className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground/70" />
+                    )}
+                    <span className={selectedTech.includes(tech) ? "text-foreground font-medium" : "text-muted-foreground"}>
+                      {tech}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
+
+            <div>
+              <label className="text-xs font-medium text-foreground mb-2 block">Target Complexity</label>
+              <div className="space-y-1.5">
+                {[
+                  { id: "beginner", label: "Beginner" },
+                  { id: "intermediate", label: "Intermediate" },
+                  { id: "advanced", label: "Advanced" }
+                ].map(level => (
+                  <label key={level.id} className="flex items-center gap-2 cursor-pointer group">
+                    <input 
+                      type="radio" 
+                      name="difficulty" 
+                      value={level.id}
+                      checked={difficulty === level.id}
+                      onChange={() => setDifficulty(level.id)}
+                      className="accent-foreground w-3 h-3"
+                    />
+                    <span className={`text-xs ${difficulty === level.id ? "text-foreground font-medium" : "text-muted-foreground group-hover:text-foreground/70"}`}>
+                      {level.label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <Button 
+              className="w-full text-xs h-8 bg-foreground text-background hover:bg-foreground/90" 
+              onClick={handleDiscover} 
+              disabled={loading || selectedTech.length === 0}
+            >
+              {loading ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-2" />}
+              Discover Issues
+            </Button>
           </div>
+        </section>
+      </div>
+
+      {/* CENTER COLUMN: Discovery Feed */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-4 border-b border-border/40 pb-2">
+          <h1 className="text-sm font-semibold tracking-tight text-foreground">Contribution Opportunities</h1>
+          <span className="text-xs text-muted-foreground font-medium">
+            {matches.length} Matches
+          </span>
         </div>
 
-        <div className="mt-8 flex justify-end">
-          <Button onClick={handleDiscover} disabled={loading || selectedTech.length === 0}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Discover Issues
-          </Button>
-        </div>
-      </section>
-
-      {/* Discovery Feed */}
-      <section>
-        <h3 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wider">Contribution Opportunities</h3>
-        
-        {matches.length === 0 && !loading && (
-          <div className="text-center py-12 border border-dashed border-border/40 rounded-lg">
-            <p className="text-sm text-muted-foreground">No opportunities discovered yet.</p>
+        {error && (
+          <div className="bg-destructive/10 text-destructive border border-destructive/20 rounded-sm p-3 mb-4 flex items-start gap-2 text-xs">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <p>{error}</p>
           </div>
         )}
 
-        <div className="space-y-4">
-          {matches.map((match) => (
-            <div key={match.id} className="border border-border/40 bg-card rounded-lg p-5">
-              <div className="flex flex-col md:flex-row justify-between md:items-start gap-4 mb-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-medium text-muted-foreground">{match.repository}</span>
-                    <span className="text-xs px-2 py-0.5 rounded-sm bg-muted text-muted-foreground border border-border/50">
-                      {match.complexity || "Unknown"}
-                    </span>
-                    {match.status === "VIEWED" && (
-                      <span className="text-xs px-2 py-0.5 rounded-sm bg-success/10 text-success border border-success/20 flex items-center gap-1">
-                        <Zap className="h-3 w-3" /> AI Evaluated
-                      </span>
+        {matches.length === 0 && !loading && (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Code2 className="h-6 w-6 text-muted-foreground/30 mb-2" />
+            <p className="text-sm font-medium text-foreground">No matches found</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+              Adjust your search parameters on the left to find issues.
+            </p>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {matches.map((match) => {
+            const isSelected = selectedMatch?.id === match.id;
+            
+            return (
+              <div 
+                key={match.id} 
+                onClick={() => setSelectedMatch(match)}
+                className={`border bg-card hover:bg-muted/30 transition-all rounded-sm overflow-hidden flex flex-col cursor-pointer ${
+                  isSelected ? 'border-foreground shadow-sm ring-1 ring-foreground/10' : 'border-border/40'
+                }`}
+              >
+                <div className="p-4 flex flex-col gap-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-semibold text-muted-foreground tracking-wider uppercase">{match.repository}</span>
+                        {match.matchScore && (
+                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                            {match.matchScore}% Match
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-sm font-semibold leading-snug text-foreground truncate">
+                        {match.issueTitle}
+                        <span className="text-muted-foreground font-normal ml-1">#{match.issueNumber}</span>
+                      </h3>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {match.technologies.map(tech => (
+                      <Badge key={tech} variant="outline" className="text-[10px] h-5 px-1.5 font-normal border-border/60">
+                        {tech}
+                      </Badge>
+                    ))}
+                    {match.contributionType && (
+                      <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50">
+                        {match.contributionType}
+                      </Badge>
+                    )}
+                    {match.complexity && (
+                      <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50">
+                        {match.complexity}
+                      </Badge>
                     )}
                   </div>
-                  <h4 className="text-base font-medium">
-                    <a href={match.issueUrl} target="_blank" rel="noreferrer" className="hover:underline">
-                      {match.issueTitle} <span className="text-muted-foreground">#{match.issueNumber}</span>
-                    </a>
-                  </h4>
-                  <div className="flex gap-2 mt-2">
-                    {match.technologies.map(tech => (
-                      <span key={tech} className="text-xs text-muted-foreground">
-                        {tech}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  {match.status === "DISCOVERED" ? (
-                    <Button 
-                      variant="secondary" 
-                      size="sm" 
-                      onClick={() => handleEvaluate(match.id)}
-                      disabled={evaluating[match.id]}
-                    >
-                      {evaluating[match.id] ? <Loader2 className="h-4 w-4 animate-spin" /> : "Evaluate Match"}
-                    </Button>
-                  ) : (
-                    <div className="text-right">
-                      <div className="text-2xl font-bold tracking-tight text-foreground">
-                        {match.matchScore}
-                        <span className="text-sm font-normal text-muted-foreground">/100</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">Match Score</p>
-                    </div>
-                  )}
                 </div>
               </div>
-
-              {match.status === "VIEWED" && match.matchReason && (
-                <div className="mt-4 pt-4 border-t border-border/40 grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Why it matches you</h5>
-                    <p className="text-sm text-foreground/90 leading-relaxed">{match.matchReason}</p>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">What you will learn</h5>
-                      <p className="text-sm text-foreground/90">{match.learningRelevance}</p>
-                    </div>
-                    <div>
-                      <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Missing Signals</h5>
-                      <p className="text-sm text-foreground/90">{match.missingSignals}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
-      </section>
+      </div>
+
+      {/* RIGHT COLUMN: Match Context / Evaluation Panel */}
+      {selectedMatch && (
+        <div className="w-full lg:w-80 shrink-0 border border-border/60 bg-card rounded-sm sticky top-6 animate-in slide-in-from-right-4 duration-300">
+          <div className="p-4 border-b border-border/40 flex flex-col gap-2">
+            <h3 className="text-sm font-semibold leading-tight">{selectedMatch.issueTitle}</h3>
+            <a 
+              href={selectedMatch.issueUrl} 
+              target="_blank" 
+              rel="noreferrer" 
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors w-fit"
+            >
+              View on GitHub <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+
+          <div className="p-4 space-y-6">
+            {selectedMatch.status === "DISCOVERED" ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
+                <Cpu className="w-8 h-8 text-muted-foreground/30" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">Contribution Context</p>
+                  <p className="text-xs text-muted-foreground max-w-[200px] mx-auto">
+                    Extract deep context from the repository to understand why this issue fits you and what you need to know.
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => handleEvaluate(selectedMatch.id)}
+                  disabled={evaluating[selectedMatch.id]}
+                  className="w-full text-xs h-8 bg-foreground text-background"
+                >
+                  {evaluating[selectedMatch.id] ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : <Cpu className="w-3 h-3 mr-2" />}
+                  Extract Context
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                <div>
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1">
+                    <Check className="w-3 h-3 text-emerald-500" /> Why this fits you
+                  </h4>
+                  <ul className="text-xs text-foreground/80 space-y-1.5 list-disc pl-4 marker:text-border">
+                    {selectedMatch.matchReason ? (
+                      // Simple split if the backend returns sentences, otherwise just render the reason
+                      selectedMatch.matchReason.split(/(?<=\.)\s+/).map((sentence, i) => (
+                        sentence.length > 3 && <li key={i}>{sentence}</li>
+                      ))
+                    ) : (
+                      <li>Strong technical alignment with your profile.</li>
+                    )}
+                  </ul>
+                </div>
+
+                {selectedMatch.missingSignals && (
+                  <div>
+                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Knowledge Gap</h4>
+                    <p className="text-xs text-foreground/80 leading-relaxed">{selectedMatch.missingSignals}</p>
+                  </div>
+                )}
+                
+                {selectedMatch.learningRelevance && (
+                  <div>
+                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Learning Value</h4>
+                    <p className="text-xs text-foreground/80 leading-relaxed">{selectedMatch.learningRelevance}</p>
+                  </div>
+                )}
+
+                <div className="pt-4 border-t border-border/40">
+                  <Button variant="outline" className="w-full text-xs h-8 gap-1.5 group">
+                    Explore Contribution <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
     </div>
   );

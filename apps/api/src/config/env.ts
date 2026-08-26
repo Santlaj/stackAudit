@@ -25,6 +25,10 @@ const envSchema = z.object({
   GITHUB_CLIENT_SECRET: z.string().min(1),
   GITHUB_TOKEN: z.string().optional(),
 
+  // Google OAuth
+  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+
   // AI Integration
   GEMINI_API_KEY: z.string().min(1).optional(),
   GROQ_API_KEY: z.string().min(1),

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { Menu, Search, Bell, ChevronRight } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useSession, signIn, signOut } from "@/lib/auth-client"
+import { useRouter } from "next/navigation"
 
 export interface TopbarProps extends React.HTMLAttributes<HTMLDivElement> {
   onMenuClick?: () => void
@@ -13,6 +14,7 @@ export interface TopbarProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function Topbar({ className, onMenuClick, children, ...props }: TopbarProps) {
   const { data: session } = useSession();
+  const router = useRouter();
 
   return (
     <header
@@ -68,12 +70,52 @@ export function Topbar({ className, onMenuClick, children, ...props }: TopbarPro
 
         {/* User Menu */}
         {session ? (
-          <div className="flex items-center gap-3">
-            <Avatar className="h-7 w-7 cursor-pointer border border-border transition-colors duration-150 hover:border-muted-foreground" onClick={() => signOut()}>
+          <div className="flex items-center gap-3 relative group">
+            <Avatar 
+              className="h-7 w-7 cursor-pointer border border-border transition-colors duration-150 hover:border-muted-foreground" 
+            >
               <AvatarFallback className="bg-secondary text-secondary-foreground text-[11px] font-medium">
                 {session.user.name?.substring(0, 2).toUpperCase() || "SA"}
               </AvatarFallback>
             </Avatar>
+            
+            {/* Simple CSS-based Dropdown for Account Menu */}
+            <div className="absolute right-0 top-full mt-2 w-48 rounded-md border border-border bg-card shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+              <div className="px-3 py-2 border-b border-border/50">
+                <p className="text-sm font-medium text-foreground truncate">{session.user.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{session.user.email}</p>
+              </div>
+              <div className="p-1">
+                <button 
+                  onClick={() => router.push("/profile")}
+                  className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-muted text-foreground transition-colors"
+                >
+                  Profile
+                </button>
+                <button 
+                  disabled
+                  className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-muted text-muted-foreground transition-colors cursor-not-allowed opacity-50"
+                >
+                  Settings
+                </button>
+              </div>
+              <div className="p-1 border-t border-border/50">
+                <button 
+                  onClick={async () => {
+                    await signOut({
+                      fetchOptions: {
+                        onSuccess: () => {
+                          router.push("/login");
+                        }
+                      }
+                    });
+                  }}
+                  className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-destructive/10 text-destructive transition-colors"
+                >
+                  Sign out
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
           <button 
