@@ -1,17 +1,11 @@
 import type { Response } from "express";
 
-// Handbook §81, §120, §123 — Consistent API response format.
-
-// ─── Type Definitions ───────────────────────────────
-
 export interface PaginationMeta {
   page: number;
   pageSize: number;
   totalItems: number;
   totalPages: number;
 }
-
-// ─── Response Helpers ───────────────────────────────
 
 // Send a success response with optional metadata.
 export function successResponse<T>(

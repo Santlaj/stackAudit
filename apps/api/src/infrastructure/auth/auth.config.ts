@@ -14,12 +14,22 @@ export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,
 
+  emailAndPassword: {
+    enabled: true,
+  },
+
   socialProviders: {
     github: {
       clientId: env.GITHUB_CLIENT_ID,
       clientSecret: env.GITHUB_CLIENT_SECRET,
     },
+    google: {
+      clientId: env.GOOGLE_CLIENT_ID || "",
+      clientSecret: env.GOOGLE_CLIENT_SECRET || "",
+    },
   },
+
+  trustedOrigins: ["http://localhost:3000"],
 
   session: {
     // Session token lives for 7 days.

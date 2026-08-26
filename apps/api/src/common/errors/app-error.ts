@@ -18,7 +18,6 @@ export class AppError extends Error {
     this.errorCode = errorCode;
     this.isOperational = isOperational;
 
-    // Required for instanceof to work correctly with extended Error classes.
     Object.setPrototypeOf(this, new.target.prototype);
   }
 }

@@ -23,6 +23,9 @@ model user {
   sessions      session[]
   accounts      account[]
 
+  profile       developer_profile?
+  issueMatches  issue_match[]
+
   @@map("users")
 }
 
@@ -72,4 +75,71 @@ model verification {
   updatedAt  DateTime? @updatedAt
 
   @@map("verifications")
+}
+
+// ─── StackAudit Core Tables ─────────────────────────
+
+
+
+model developer_profile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // -- OBSERVED (from GitHub directly) --
+  observedLanguages String[] // e.g., ["TypeScript", "Python"]
+  publicRepoCount   Int      @default(0)
+  totalContributions Int     @default(0)
+  githubBio         String?
+  githubCompany     String?
+  githubLocation    String?
+
+  // -- INFERRED (derived by StackAudit) --
+  // Use JSON to store complex mappings like { "React": "Intermediate" }
+  inferredSkills    Json?    
+
+  // -- USER-CONFIRMED (Intent & Preferences) --
+  currentFocus      String[] // e.g., ["Java", "Spring Boot"]
+  learningGoals     String[] // e.g., ["REST APIs", "Testing"]
+  preferredArea     String?  // e.g., "Backend"
+  preferredComplexity String? // e.g., "Intermediate"
+  preferredContributionTypes String[] // e.g., ["Bug fix", "Feature"]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("developer_profiles")
+}
+
+model issue_match {
+  id              String   @id @default(uuid())
+  userId          String
+  user            user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  repository      String   // e.g., "facebook/react"
+  issueNumber     Int
+  issueTitle      String
+  issueUrl        String
+  
+  // -- V1 Deterministic Search Signals --
+  complexity      String?  // e.g. "Good First Issue", "Intermediate"
+  contributionType String? // e.g. "Bug Fix", "Feature"
+  technologies    String[] // e.g. ["React", "TypeScript"]
+  
+  // -- Matching --
+  matchScore      Int?     // Deterministic or combined score 0-100
+  
+  // -- AI Explanation Layer --
+  matchReason     String?  // AI explanation of why it fits the dev
+  missingSignals  String?  // What appears to be missing or challenging
+  learningRelevance String? // What they will learn from this
+  
+  status          String   @default("DISCOVERED") // DISCOVERED, VIEWED, SAVED, DISMISSED
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([repository])
+  @@map("issue_matches")
 }
