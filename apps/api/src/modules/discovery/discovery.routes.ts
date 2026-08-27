@@ -15,4 +15,7 @@ router.post("/discover", discoveryController.discoverIssues);
 router.get("/matches/:userId", discoveryController.getMatches);
 router.post("/evaluate/:matchId", discoveryController.evaluateMatch);
 
+// Development Routes (P0 Validation)
+router.post("/dev/ingest-issues", discoveryController.ingestIssues);
+
 export { router as discoveryRoutes };

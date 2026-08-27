@@ -6,6 +6,7 @@ import { Menu, Search, Bell, ChevronRight } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useSession, signIn, signOut } from "@/lib/auth-client"
 import { useRouter } from "next/navigation"
+import { GooeyInput } from "@/components/ui/gooey-input"
 
 export interface TopbarProps extends React.HTMLAttributes<HTMLDivElement> {
   onMenuClick?: () => void
@@ -43,18 +44,15 @@ export function Topbar({ className, onMenuClick, children, ...props }: TopbarPro
 
       <div className="flex items-center gap-3 md:gap-4 flex-1 justify-end">
         {/* Search / Command Placeholder */}
-        <div className="hidden md:flex relative max-w-sm w-full items-center">
-          <Search className="absolute left-2.5 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
+        <div className="hidden md:flex relative w-full items-center justify-end pr-2">
+          <GooeyInput 
             placeholder="Search repositories or commands..."
-            className="h-8 w-full rounded-md border border-border bg-muted/30 pl-9 pr-14 text-sm outline-none placeholder:text-muted-foreground/60 focus:border-muted-foreground focus:bg-background transition-colors duration-150"
+            collapsedWidth={120}
+            expandedWidth={300}
+            classNames={{
+              root: "scale-[0.8] origin-right" // slightly scale down to fit the 14 h-14 topbar better
+            }}
           />
-          <div className="absolute right-2.5 flex items-center gap-1">
-            <kbd className="inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-              <span className="text-xs">⌘</span>K
-            </kbd>
-          </div>
         </div>
         
         {/* Mobile Search Icon */}
