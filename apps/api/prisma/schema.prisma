@@ -87,15 +87,26 @@ model developer_profile {
   user            user     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   // -- OBSERVED (from GitHub directly) --
-  observedLanguages String[] // e.g., ["TypeScript", "Python"]
+  githubLogin       String?              // GitHub username
+  observedLanguages String[]             // e.g., ["TypeScript", "Python"]
+  recentLanguages   String[]             // Languages from repos pushed in last 6 months
   publicRepoCount   Int      @default(0)
   totalContributions Int     @default(0)
   githubBio         String?
   githubCompany     String?
   githubLocation    String?
+  repositoryTopics  String[]             // Aggregated topics from user's repos
+
+  // -- ENRICHED (from deeper GitHub API calls) --
+  languageBytes     Json?                // e.g., { "TypeScript": 284000, "Python": 52000 }
+  commitCount       Int      @default(0)
+  prCount           Int      @default(0)
+  issueCount        Int      @default(0)
+  reviewCount       Int      @default(0)
+  lastActiveAt      DateTime?
 
   // -- INFERRED (derived by StackAudit) --
-  // Use JSON to store complex mappings like { "React": "Intermediate" }
+  // Use JSON to store complex mappings like { "TypeScript": "Advanced", "Python": "Intermediate" }
   inferredSkills    Json?    
 
   // -- USER-CONFIRMED (Intent & Preferences) --
@@ -121,6 +132,10 @@ model issue_match {
   issueTitle      String
   issueUrl        String
   
+  // -- Link to raw issue data --
+  githubIssueId   String?
+  githubIssue     github_issue? @relation(fields: [githubIssueId], references: [id])
+  
   // -- V1 Deterministic Search Signals --
   complexity      String?  // e.g. "Good First Issue", "Intermediate"
   contributionType String? // e.g. "Bug Fix", "Feature"
@@ -134,6 +149,10 @@ model issue_match {
   missingSignals  String?  // What appears to be missing or challenging
   learningRelevance String? // What they will learn from this
   
+  // -- Structured Matching Output --
+  reasons         String[] // Deterministic reasons (e.g. "TypeScript matches your experience")
+  gaps            String[] // Deterministic gaps (e.g. "Low PR acceptance rate")
+  
   status          String   @default("DISCOVERED") // DISCOVERED, VIEWED, SAVED, DISMISSED
   
   createdAt       DateTime @default(now())
@@ -141,5 +160,69 @@ model issue_match {
 
   @@index([userId])
   @@index([repository])
+  @@index([githubIssueId])
   @@map("issue_matches")
+}
+
+// ─── GitHub Issue Data ──────────────────────────────
+// Raw issue data stored independently of user matches.
+// Multiple users can match the same issue without duplicating data.
+
+model github_issue {
+  id              String   @id @default(uuid())
+  
+  // -- Identity --
+  githubId        BigInt   @unique       // GitHub's issue ID
+  repository      String                 // "owner/repo"
+  issueNumber     Int
+  
+  // -- Content --
+  title           String
+  body            String?                // Issue body/description (truncated)
+  url             String                 // html_url
+  
+  // -- State --
+  state           String                 // "open", "closed"
+  issueCreatedAt  DateTime               // GitHub's created_at
+  issueUpdatedAt  DateTime               // GitHub's updated_at
+  closedAt        DateTime?
+  
+  // -- Raw Signals --
+  labels          String[]               // All label names
+  commentsCount   Int      @default(0)
+  reactionsTotal  Int      @default(0)
+  assigneeCount   Int      @default(0)
+  linkedPrCount   Int      @default(0)
+  
+  // -- Repository Context --
+  repoLanguage    String?                // Primary language of the repo
+  repoStars       Int      @default(0)
+  repoOpenIssues  Int      @default(0)
+  repoActivityLevel String?              // "active", "moderate", "low", "inactive"
+  repoLastPushedAt  DateTime?
+  repoLastUpdatedAt DateTime?
+  repoPrAcceptanceRate Float?            // 0-100% acceptance rate
+  
+  // -- Derived Signals (computed on ingest) --
+  staleness         String?              // "fresh", "aging", "stale", "abandoned"
+  activityLevel     String?              // "active", "moderate", "low", "dead"
+  difficultyEstimate String?             // "beginner", "intermediate", "advanced"
+  issueType         String?              // "bug", "feature", "docs", "refactor", "unknown"
+  isGoodFirstIssue  Boolean  @default(false)
+  isHelpWanted      Boolean  @default(false)
+  
+  // -- Metadata --
+  ingestedAt      DateTime @default(now())
+  lastSyncedAt    DateTime @default(now())
+  
+  // -- Relations --
+  matches         issue_match[]
+  
+  @@unique([repository, issueNumber])
+  @@index([repository])
+  @@index([repoLanguage])
+  @@index([difficultyEstimate])
+  @@index([staleness])
+  @@index([state])
+  @@map("github_issues")
 }

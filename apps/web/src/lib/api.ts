@@ -31,6 +31,18 @@ export interface IssueMatch {
   matchReason?: string;
   missingSignals?: string;
   learningRelevance?: string;
+  reasons?: string[];
+  gaps?: string[];
+  architecturalContext?: string;
+  relevantFiles?: string[];
+  implementationApproach?: string;
+  repositoryActivity?: {
+    status: string;
+    lastActivityAt: string | null;
+    openIssues: number | null;
+    stars: number | null;
+    prAcceptanceRate: number | null;
+  };
   status: string; // DISCOVERED, VIEWED, SAVED
 }
 

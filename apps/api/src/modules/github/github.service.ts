@@ -207,6 +207,342 @@ export class GithubService {
     }
   }
 
+  // ─── Enriched Developer Data (P0) ──────────────────
+
+  /**
+   * Fetch repositories with enriched metadata for profile ingestion.
+   * Returns topics, description, push date, size, and issue counts
+   * in addition to the basic fields.
+   */
+  async getUserRepositoriesEnriched(token: string, perPage = 50) {
+    if (!token) {
+      throw new AppError("A valid GitHub token is required for this operation", 401, "GITHUB_UNAUTHORIZED");
+    }
+    try {
+      const client = createGithubClient(token);
+      const { data } = await client.repos.listForAuthenticatedUser({
+        sort: "pushed",
+        direction: "desc",
+        per_page: perPage,
+      });
+
+      return data.map((repo: any) => ({
+        name: repo.name,
+        fullName: repo.full_name,
+        description: repo.description,
+        language: repo.language,
+        stargazersCount: repo.stargazers_count,
+        fork: repo.fork,
+        size: repo.size,
+        topics: repo.topics || [],
+        createdAt: repo.created_at,
+        updatedAt: repo.updated_at,
+        pushedAt: repo.pushed_at,
+        openIssuesCount: repo.open_issues_count,
+        hasIssues: repo.has_issues,
+        owner: repo.owner?.login,
+      }));
+    } catch (error: any) {
+      this.handleError(error, "Failed to fetch enriched user repositories");
+    }
+  }
+
+  /**
+   * Fetch per-repo language byte counts for the user's top repos.
+   * Calls GET /repos/{owner}/{repo}/languages for each repo.
+   * 
+   * @param repos - Array of { fullName: "owner/repo" } to fetch languages for
+   * @param token - GitHub OAuth token
+   * @param limit - Max repos to fetch (default 10 to conserve rate limit)
+   * @returns Aggregated language bytes: { "TypeScript": 500000, "Python": 120000 }
+   */
+  async getUserLanguageBreakdown(
+    repos: Array<{ fullName: string }>,
+    token: string,
+    limit = 10
+  ): Promise<Record<string, number>> {
+    if (!token) {
+      throw new AppError("A valid GitHub token is required for this operation", 401, "GITHUB_UNAUTHORIZED");
+    }
+
+    const client = createGithubClient(token);
+    const aggregated: Record<string, number> = {};
+    const reposToFetch = repos.slice(0, limit);
+
+    for (const repo of reposToFetch) {
+      const [owner, name] = repo.fullName.split("/");
+      try {
+        const { data } = await client.repos.listLanguages({ owner, repo: name });
+        for (const [lang, bytes] of Object.entries(data)) {
+          aggregated[lang] = (aggregated[lang] || 0) + (bytes as number);
+        }
+      } catch (error: any) {
+        // Non-fatal: skip repos where language fetch fails (e.g., empty repos)
+        logger.warn(`Failed to fetch languages for ${repo.fullName}`, { error: error.message });
+      }
+    }
+
+    return aggregated;
+  }
+
+  /**
+   * Fetch real contribution statistics from the user's public events.
+   * Uses GET /users/{username}/events to count commits, PRs, issues, reviews
+   * from the last 90 days.
+   * 
+   * GitHub only returns the most recent 300 events (max 10 pages of 30),
+   * so this is an approximation for active users.
+   */
+  async getUserContributionStats(token: string, username: string) {
+    if (!token) {
+      throw new AppError("A valid GitHub token is required for this operation", 401, "GITHUB_UNAUTHORIZED");
+    }
+
+    const client = createGithubClient(token);
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+    const stats = {
+      commitCount: 0,
+      prCount: 0,
+      issueCount: 0,
+      reviewCount: 0,
+      lastActiveAt: null as Date | null,
+    };
+
+    try {
+      // Fetch up to 3 pages (90 events) — balance between data and rate limit
+      for (let page = 1; page <= 3; page++) {
+        const { data } = await client.activity.listPublicEventsForUser({
+          username,
+          per_page: 30,
+          page,
+        });
+
+        if (data.length === 0) break;
+
+        for (const event of data) {
+          const eventDate = new Date(event.created_at || "");
+          if (eventDate < ninetyDaysAgo) break;
+
+          // Track most recent activity
+          if (!stats.lastActiveAt || eventDate > stats.lastActiveAt) {
+            stats.lastActiveAt = eventDate;
+          }
+
+          switch (event.type) {
+            case "PushEvent":
+              // Each PushEvent can contain multiple commits
+              stats.commitCount += (event.payload as any)?.commits?.length || 1;
+              break;
+            case "PullRequestEvent":
+              if ((event.payload as any)?.action === "opened") {
+                stats.prCount += 1;
+              }
+              break;
+            case "IssuesEvent":
+              if ((event.payload as any)?.action === "opened") {
+                stats.issueCount += 1;
+              }
+              break;
+            case "PullRequestReviewEvent":
+              stats.reviewCount += 1;
+              break;
+          }
+        }
+      }
+    } catch (error: any) {
+      // Non-fatal: if events API fails, return zeroed stats
+      logger.warn("Failed to fetch user contribution events", { username, error: error.message });
+    }
+
+    return stats;
+  }
+
+  // ─── Enriched Issue Data (P0) ──────────────────────
+
+  /**
+   * Search GitHub for issues with the full signal set needed for quality matching.
+   * 
+   * Runs multiple searches (one per language) and deduplicates results.
+   * Captures body, reactions, assignees, and repository context.
+   * Filters out pull requests that appear in issue search results.
+   */
+  async searchIssuesEnriched(
+    languages: string[],
+    labels: string[] = ["good first issue"],
+    token?: string,
+    perLanguageLimit = 15
+  ) {
+    const client = createGithubClient(token);
+    const seenIds = new Set<number>();
+    const results: EnrichedIssueResult[] = [];
+
+    // Search for each language separately to get broader coverage
+    const searchLanguages = languages.length > 0 ? languages.slice(0, 3) : [""];
+
+    for (const language of searchLanguages) {
+      try {
+        let query = "is:issue is:open";
+        
+        if (labels.length > 0) {
+          query += " " + labels.map(l => `label:"${l}"`).join(" ");
+        }
+        if (language) {
+          query += ` language:${language}`;
+        }
+
+        const { data } = await client.search.issuesAndPullRequests({
+          q: query,
+          sort: "updated",
+          order: "desc",
+          per_page: perLanguageLimit,
+        });
+
+        for (const item of data.items) {
+          // Skip PRs that appear in search results
+          if ((item as any).pull_request) continue;
+          // Deduplicate across language searches
+          if (seenIds.has(item.id)) continue;
+          seenIds.add(item.id);
+
+          const repoUrlParts = item.repository_url.split("/");
+          const repository = `${repoUrlParts[repoUrlParts.length - 2]}/${repoUrlParts[repoUrlParts.length - 1]}`;
+
+          results.push({
+            githubId: item.id,
+            repository,
+            issueNumber: item.number,
+            title: item.title,
+            body: item.body?.substring(0, 4000) || null, // Truncate for storage
+            url: item.html_url,
+            state: item.state || "open",
+            issueCreatedAt: new Date(item.created_at),
+            issueUpdatedAt: new Date(item.updated_at),
+            closedAt: item.closed_at ? new Date(item.closed_at) : null,
+            labels: item.labels.map((l: any) => typeof l === "string" ? l : l.name).filter(Boolean),
+            commentsCount: item.comments || 0,
+            reactionsTotal: (item as any).reactions?.total_count || 0,
+            assigneeCount: item.assignees?.length || (item.assignee ? 1 : 0),
+            linkedPrCount: 0, // Not available from search, would need timeline API
+          });
+        }
+      } catch (error: any) {
+        logger.warn(`Failed to search enriched issues for language: ${language}`, { error: error.message });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Fetch full detail for a single issue.
+   * Used when a user wants to drill into a specific issue.
+   */
+  async getIssueDetail(owner: string, repo: string, issueNumber: number, token?: string) {
+    try {
+      const client = createGithubClient(token);
+      const { data } = await client.issues.get({
+        owner,
+        repo,
+        issue_number: issueNumber,
+      });
+
+      return {
+        githubId: data.id,
+        repository: `${owner}/${repo}`,
+        issueNumber: data.number,
+        title: data.title,
+        body: data.body?.substring(0, 4000) || null,
+        url: data.html_url,
+        state: data.state || "open",
+        issueCreatedAt: new Date(data.created_at),
+        issueUpdatedAt: new Date(data.updated_at),
+        closedAt: data.closed_at ? new Date(data.closed_at) : null,
+        labels: data.labels.map((l: any) => typeof l === "string" ? l : l.name).filter(Boolean),
+        commentsCount: data.comments || 0,
+        reactionsTotal: (data as any).reactions?.total_count || 0,
+        assigneeCount: data.assignees?.length || (data.assignee ? 1 : 0),
+        linkedPrCount: 0,
+      };
+    } catch (error: any) {
+      this.handleError(error, `Failed to fetch issue #${issueNumber} for ${owner}/${repo}`);
+    }
+  }
+
+  /**
+   * Fetch basic repository context for enriching issue data.
+   * Returns only the fields needed for issue signal derivation.
+   */
+  async getRepositoryContext(owner: string, repo: string, token?: string) {
+    try {
+      const client = createGithubClient(token);
+      
+      const [repoRes, prRes] = await Promise.allSettled([
+        client.repos.get({ owner, repo }),
+        client.search.issuesAndPullRequests({
+          q: `repo:${owner}/${repo} is:pr is:closed`,
+          per_page: 30, // Sample the last 30 closed PRs
+        })
+      ]);
+
+      if (repoRes.status === "rejected") {
+        throw new Error(repoRes.reason);
+      }
+
+      const repoData = repoRes.value.data;
+      
+      // Calculate PR acceptance rate
+      let prAcceptanceRate: number | null = null;
+      let prCount = 0;
+      let mergedCount = 0;
+
+      if (prRes.status === "fulfilled") {
+        const prs = prRes.value.data.items;
+        prCount = prs.length;
+        if (prCount > 0) {
+          mergedCount = prs.filter((item: any) => item.pull_request?.merged_at).length;
+          prAcceptanceRate = (mergedCount / prCount) * 100;
+        }
+      }
+
+      // Determine activity level based on pushed_at and PR activity
+      let activityLevel = "low";
+      const now = new Date();
+      const pushedDate = new Date(repoData.pushed_at || repoData.updated_at || now);
+      const daysSincePush = (now.getTime() - pushedDate.getTime()) / (1000 * 3600 * 24);
+
+      if (daysSincePush > 365) {
+        activityLevel = "inactive";
+      } else if (daysSincePush < 30 && prCount > 5) {
+        activityLevel = "active";
+      } else if (daysSincePush < 90) {
+        activityLevel = "moderate";
+      }
+
+      return {
+        language: repoData.language,
+        stars: repoData.stargazers_count,
+        openIssues: repoData.open_issues_count,
+        pushedAt: repoData.pushed_at ? new Date(repoData.pushed_at) : null,
+        updatedAt: repoData.updated_at ? new Date(repoData.updated_at) : null,
+        prAcceptanceRate,
+        activityLevel
+      };
+    } catch (error: any) {
+      logger.warn(`Failed to fetch repo context for ${owner}/${repo}`, { error: error.message });
+      return { 
+        language: null, 
+        stars: 0, 
+        openIssues: 0,
+        pushedAt: null,
+        updatedAt: null,
+        prAcceptanceRate: null,
+        activityLevel: "inactive"
+      };
+    }
+  }
+
   /**
    * Map GitHub API errors to AppError
    */
@@ -231,4 +567,27 @@ export class GithubService {
   }
 }
 
+/**
+ * Shape of an enriched issue result from searchIssuesEnriched / getIssueDetail.
+ * Maps directly to github_issue table fields.
+ */
+export interface EnrichedIssueResult {
+  githubId: number;
+  repository: string;
+  issueNumber: number;
+  title: string;
+  body: string | null;
+  url: string;
+  state: string;
+  issueCreatedAt: Date;
+  issueUpdatedAt: Date;
+  closedAt: Date | null;
+  labels: string[];
+  commentsCount: number;
+  reactionsTotal: number;
+  assigneeCount: number;
+  linkedPrCount: number;
+}
+
 export const githubService = new GithubService();
+

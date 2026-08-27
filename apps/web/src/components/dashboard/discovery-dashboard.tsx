@@ -89,6 +89,7 @@ export function DiscoveryDashboard() {
 
   const handleEvaluate = async (matchId: string) => {
     setEvaluating(prev => ({ ...prev, [matchId]: true }));
+    setError(null);
     try {
       const updatedMatch = await evaluateMatch(matchId);
       setMatches(prev => prev.map(m => m.id === matchId ? updatedMatch : m));
@@ -97,6 +98,7 @@ export function DiscoveryDashboard() {
       }
     } catch (err: any) {
       console.error("Evaluation failed", err);
+      setError("Failed to extract context. Check backend logs.");
     } finally {
       setEvaluating(prev => ({ ...prev, [matchId]: false }));
     }
@@ -246,7 +248,20 @@ export function DiscoveryDashboard() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1 flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-semibold text-muted-foreground tracking-wider uppercase">{match.repository}</span>
+                        <span className="text-[10px] font-semibold text-muted-foreground tracking-wider uppercase flex items-center gap-1.5">
+                          {match.repository}
+                          {match.repositoryActivity && (
+                            <span 
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                match.repositoryActivity.status === "active" ? "bg-emerald-500" :
+                                match.repositoryActivity.status === "moderate" ? "bg-amber-500" :
+                                match.repositoryActivity.status === "low" ? "bg-orange-500" :
+                                "bg-muted-foreground"
+                              }`} 
+                              title={`Repository activity: ${match.repositoryActivity.status}`}
+                            />
+                          )}
+                        </span>
                         {match.matchScore && (
                           <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded">
                             {match.matchScore}% Match
@@ -320,6 +335,44 @@ export function DiscoveryDashboard() {
               </div>
             ) : (
               <div className="space-y-5">
+                {selectedMatch.repositoryActivity && (
+                  <div className="pb-4 border-b border-border/40">
+                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-1">
+                      Repository
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <div className="text-muted-foreground mb-0.5">Activity</div>
+                        <div className="font-medium text-foreground capitalize flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            selectedMatch.repositoryActivity.status === "active" ? "bg-emerald-500" :
+                            selectedMatch.repositoryActivity.status === "moderate" ? "bg-amber-500" :
+                            selectedMatch.repositoryActivity.status === "low" ? "bg-orange-500" :
+                            "bg-muted-foreground"
+                          }`} />
+                          {selectedMatch.repositoryActivity.status}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground mb-0.5">Stars</div>
+                        <div className="font-medium text-foreground">{selectedMatch.repositoryActivity.stars || 0}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground mb-0.5">Open Issues</div>
+                        <div className="font-medium text-foreground">{selectedMatch.repositoryActivity.openIssues || 0}</div>
+                      </div>
+                      {selectedMatch.repositoryActivity.prAcceptanceRate !== null && (
+                        <div>
+                          <div className="text-muted-foreground mb-0.5">PR Acceptance</div>
+                          <div className="font-medium text-foreground">
+                            {Math.round(selectedMatch.repositoryActivity.prAcceptanceRate)}%
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1">
                     <Check className="w-3 h-3 text-emerald-500" /> Why this fits you
@@ -347,6 +400,31 @@ export function DiscoveryDashboard() {
                   <div>
                     <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Learning Value</h4>
                     <p className="text-xs text-foreground/80 leading-relaxed">{selectedMatch.learningRelevance}</p>
+                  </div>
+                )}
+
+                {selectedMatch.architecturalContext && (
+                  <div className="pt-2">
+                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Architectural Context</h4>
+                    <p className="text-xs text-foreground/80 leading-relaxed">{selectedMatch.architecturalContext}</p>
+                  </div>
+                )}
+
+                {selectedMatch.relevantFiles && selectedMatch.relevantFiles.length > 0 && (
+                  <div className="pt-2">
+                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Relevant Files</h4>
+                    <ul className="text-xs text-foreground/80 space-y-1 list-disc pl-4 marker:text-border">
+                      {selectedMatch.relevantFiles.map((file, i) => (
+                        <li key={i} className="font-mono text-[10px] bg-muted/30 px-1 py-0.5 rounded-sm w-fit">{file}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {selectedMatch.implementationApproach && (
+                  <div className="pt-2">
+                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Suggested Approach</h4>
+                    <p className="text-xs text-foreground/80 leading-relaxed">{selectedMatch.implementationApproach}</p>
                   </div>
                 )}
 
