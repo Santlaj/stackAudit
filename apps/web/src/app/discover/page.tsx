@@ -8,11 +8,7 @@ export default function DiscoverPage() {
   return (
     <ProtectedRoute>
       <Shell>
-        <PageContainer>
-          <PageHeader
-            title="Find My Contribution"
-            description="Discover open-source issues matched to your developer profile."
-          />
+        <PageContainer fullWidth={true}>
           <DiscoveryDashboard />
         </PageContainer>
       </Shell>
