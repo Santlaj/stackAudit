@@ -3,12 +3,17 @@ import { cn } from "@/lib/utils"
 
 export interface PageContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode
+  fullWidth?: boolean
 }
 
-export function PageContainer({ className, children, ...props }: PageContainerProps) {
+export function PageContainer({ className, children, fullWidth = false, ...props }: PageContainerProps) {
   return (
     <div
-      className={cn("mx-auto w-full max-w-6xl px-4 py-8 md:px-8 md:py-10", className)}
+      className={cn(
+        "w-full px-4 py-8 md:px-8 md:py-10", 
+        !fullWidth && "mx-auto max-w-6xl",
+        className
+      )}
       {...props}
     >
       {children}

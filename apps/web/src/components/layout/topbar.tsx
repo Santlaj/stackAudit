@@ -91,8 +91,8 @@ export function Topbar({ className, onMenuClick, children, ...props }: TopbarPro
                   Profile
                 </button>
                 <button 
-                  disabled
-                  className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-muted text-muted-foreground transition-colors cursor-not-allowed opacity-50"
+                  onClick={() => router.push("/settings")}
+                  className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-muted text-foreground transition-colors"
                 >
                   Settings
                 </button>
