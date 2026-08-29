@@ -48,13 +48,17 @@ export class DiscoveryController {
 
   async discoverIssues(req: Request, res: Response, next: NextFunction) {
     try {
-      const { userId, techStack, difficulty } = req.body;
-      const matches = await discoveryService.discoverMatchesForUser(
+      const { userId, languages, frameworks, difficulty } = req.body;
+      const { matches, partialCoverage } = await discoveryService.discoverMatchesForUser(
         userId as string, 
-        techStack as string[], 
+        languages as string[],
+        frameworks as string[],
         difficulty as string
       );
-      successResponse(res, matches.map(m => formatMatchDto(m)), "Discovery complete", 200);
+      successResponse(res, {
+        matches: matches.map(m => formatMatchDto(m)),
+        partialCoverage
+      }, "Discovery complete", 200);
     } catch (error) {
       next(error);
     }

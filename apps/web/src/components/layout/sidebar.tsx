@@ -44,8 +44,8 @@ export function Sidebar({ className, ...props }: SidebarProps) {
         
         {!isCollapsed && (
           <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight text-foreground ml-2 overflow-hidden">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-foreground text-background">
-              <span className="text-[10px] font-bold">SA</span>
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded overflow-hidden">
+              <img src="/icon.png" alt="StackAudit Logo" className="w-full h-full object-contain" />
             </div>
             <span className="truncate">StackAudit</span>
           </Link>

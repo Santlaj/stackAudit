@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShimmerLoader } from "@/components/ui/shimmer-loader";
-import { Loader2, AlertCircle, RefreshCw, Github, CheckSquare, Square, Check, Cpu, Code2, ArrowRight, ExternalLink } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw, Github, CheckSquare, Square, Check, Cpu, Code2, ArrowRight, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { 
   DeveloperProfile, 
   IssueMatch, 
@@ -83,15 +83,26 @@ export function DiscoveryDashboard() {
   }, []);
 
   // User Preferences State
-  const [selectedTech, setSelectedTech] = useState<string[]>([]);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [selectedFrameworks, setSelectedFrameworks] = useState<string[]>([]);
   const [difficulty, setDifficulty] = useState<string>("beginner");
+  const [partialCoverage, setPartialCoverage] = useState<boolean>(false);
+  const [isFiltersExpanded, setIsFiltersExpanded] = useState<boolean>(true);
+  const [visibleCount, setVisibleCount] = useState<number>(10);
 
   // Resizable Workspace State
   const [workspaceWidth, setWorkspaceWidth] = useState<number>(50); // Default to 50%
   const [isResizing, setIsResizing] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const AVAILABLE_TECH = ["TypeScript", "Python", "Rust", "React", "Node.js", "Go", "Java", "C++"];
+  const AVAILABLE_LANGUAGES = [
+    "TypeScript", "JavaScript", "Python", "Java", "C", "C++", "C#", 
+    "Go", "Rust", "Ruby", "PHP", "Swift", "Kotlin", "Dart"
+  ];
+  const AVAILABLE_FRAMEWORKS = [
+    "React", "Next.js", "Vue", "Angular", "Svelte",
+    "Node.js", "Express", "NestJS", "Django", "Flask", "Spring"
+  ];
 
   useEffect(() => {
     const saved = localStorage.getItem("stackaudit-workspace-width");
@@ -148,6 +159,12 @@ export function DiscoveryDashboard() {
       }
       if (p) {
         setProfile(p);
+        
+        // Pre-select observed languages
+        const observed = p.observedLanguages || [];
+        const initialLangs = observed.filter((l: string) => AVAILABLE_LANGUAGES.includes(l));
+        setSelectedLanguages(initialLangs);
+
         const m = await getMatches(userId).catch(() => []);
         setMatches(m);
       }
@@ -178,9 +195,12 @@ export function DiscoveryDashboard() {
     setError(null);
     setSelectedMatch(null);
     try {
-      await discoverIssues(session.user.id, selectedTech, difficulty);
-      const m = await getMatches(session.user.id);
-      setMatches(m);
+      setPartialCoverage(false);
+      setIsFiltersExpanded(false);
+      setVisibleCount(10);
+      const res = await discoverIssues(session.user.id, selectedLanguages, selectedFrameworks, difficulty);
+      setMatches(res.matches || []);
+      setPartialCoverage(res.partialCoverage || false);
     } catch (err: any) {
       setError("Failed to discover issues. Check backend logs.");
     } finally {
@@ -205,8 +225,11 @@ export function DiscoveryDashboard() {
     }
   };
 
-  const toggleTech = (tech: string) => {
-    setSelectedTech(prev => prev.includes(tech) ? prev.filter(t => t !== tech) : [...prev, tech]);
+  const toggleLanguage = (tech: string) => {
+    setSelectedLanguages(prev => prev.includes(tech) ? prev.filter(t => t !== tech) : [...prev, tech]);
+  };
+  const toggleFramework = (tech: string) => {
+    setSelectedFrameworks(prev => prev.includes(tech) ? prev.filter(t => t !== tech) : [...prev, tech]);
   };
 
   const maxScore = matches.length > 0 ? Math.max(...matches.map(m => m.matchScore || 0)) : 0;
@@ -250,25 +273,57 @@ export function DiscoveryDashboard() {
           style={{ background: 'linear-gradient(to bottom, color-mix(in srgb, var(--foreground) 15%, transparent) 0%, transparent 100px, transparent calc(100% - 100px), color-mix(in srgb, var(--foreground) 15%, transparent) 100%)' }}
         >
           <div className="bg-card rounded-[calc(0.75rem-1.5px)] p-3 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-semibold tracking-tight text-foreground">Discovery Parameters</h2>
+            <div 
+              className="flex items-center justify-between cursor-pointer"
+              onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
+            >
+              <h2 className="text-xs font-semibold tracking-tight text-foreground flex items-center gap-2">
+                Discovery Parameters
+                {!isFiltersExpanded && (selectedLanguages.length > 0 || selectedFrameworks.length > 0) && (
+                  <span className="text-[10px] font-normal text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-full">
+                    {selectedLanguages.length} Langs, {selectedFrameworks.length} Frameworks
+                  </span>
+                )}
+              </h2>
+              {isFiltersExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
             </div>
             
-            <div className="space-y-1.5">
-              <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Technologies</label>
+            {isFiltersExpanded && (
+              <>
+                <div className="space-y-1.5">
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Languages</label>
               <div className="flex flex-wrap gap-1.5">
-                {AVAILABLE_TECH.map(tech => (
-                  <button
+                {AVAILABLE_LANGUAGES.map(tech => (
+                  <Badge
                     key={tech}
-                    onClick={() => toggleTech(tech)}
-                    className={`text-[10px] px-2 py-0.5 rounded-sm border transition-colors ${
-                      selectedTech.includes(tech)
-                        ? "bg-primary/10 border-primary/30 text-primary font-medium"
-                        : "bg-transparent border-border/40 text-muted-foreground hover:border-border/80"
-                    }`}
+                    variant={selectedLanguages.includes(tech) ? "default" : "outline"}
+                    className={cn(
+                      "cursor-pointer text-[10px] h-5 transition-colors",
+                      !selectedLanguages.includes(tech) && "hover:bg-muted"
+                    )}
+                    onClick={() => toggleLanguage(tech)}
                   >
-                    {tech} {selectedTech.includes(tech) && "×"}
-                  </button>
+                    {tech}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Frameworks</label>
+              <div className="flex flex-wrap gap-1.5">
+                {AVAILABLE_FRAMEWORKS.map(tech => (
+                  <Badge
+                    key={tech}
+                    variant={selectedFrameworks.includes(tech) ? "default" : "outline"}
+                    className={cn(
+                      "cursor-pointer text-[10px] h-5 transition-colors",
+                      !selectedFrameworks.includes(tech) && "hover:bg-muted"
+                    )}
+                    onClick={() => toggleFramework(tech)}
+                  >
+                    {tech}
+                  </Badge>
                 ))}
               </div>
             </div>
@@ -307,20 +362,33 @@ export function DiscoveryDashboard() {
               <Button 
                 className="w-full text-[11px] h-7 bg-foreground text-background hover:bg-foreground/90 font-medium tracking-wide shadow-sm" 
                 onClick={handleDiscover} 
-                disabled={loading || selectedTech.length === 0}
+                disabled={loading || (selectedLanguages.length === 0 && selectedFrameworks.length === 0)}
               >
                 {loading ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-2" />}
                 Discover Matches
-              </Button>
-            </div>
-          </div>
+                </Button>
+              </div>
+            </>
+          )}
         </div>
+      </div>
 
         {/* Feed List */}
         <div className="flex-1 overflow-y-auto pr-1 space-y-2 pb-10 custom-scrollbar">
           <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold tracking-tight text-foreground flex items-center gap-2">
+              {matches.length} opportunities
+              {partialCoverage && (
+                <span className="text-[10px] font-normal text-muted-foreground flex items-center gap-1.5 bg-muted/50 px-2 py-0.5 rounded-full">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
+                  </span>
+                  More results loading...
+                </span>
+              )}
+            </span>
             <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">DISCOVER</span>
-            <span className="text-[10px] text-muted-foreground">{matches.length} opportunities</span>
           </div>
 
           {error && (
@@ -337,7 +405,7 @@ export function DiscoveryDashboard() {
             </div>
           )}
 
-          {matches.map((match) => {
+          {matches.slice(0, visibleCount).map((match) => {
             const isSelected = selectedMatch?.id === match.id;
             const isStrong = match.matchScore && match.matchScore >= 80;
             const isWeak = match.matchScore && match.matchScore < 50;
@@ -452,6 +520,23 @@ export function DiscoveryDashboard() {
               </div>
             );
           })}
+
+          <div className="pt-2 pb-4 flex justify-center">
+            {visibleCount < matches.length ? (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs font-medium w-full text-muted-foreground hover:text-foreground"
+                onClick={() => setVisibleCount(prev => Math.min(prev + 10, matches.length))}
+              >
+                Reveal more opportunities ({matches.length - visibleCount} remaining)
+              </Button>
+            ) : (
+              <span className="text-xs font-medium text-muted-foreground/50 py-2">
+                All {matches.length} matching opportunities loaded
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

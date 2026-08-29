@@ -4,6 +4,7 @@ import { githubService } from "../github/index.js";
 import { getAiProvider } from "../../infrastructure/ai/index.js";
 import { logger } from "../../utils/logger.js";
 import { matchingService } from "./matching.service.js";
+import { issueIngestionService } from "./issue-ingestion.service.js";
 
 export class DiscoveryService {
   async getProfile(userId: string) {
@@ -20,28 +21,63 @@ export class DiscoveryService {
     return prisma.issue_match.findMany({
       where: { userId },
       orderBy: { matchScore: "desc" },
+      take: 30,
       include: { githubIssue: true },
     });
   }
 
   /**
-   * The core Matching Engine: Finds repositories & issues suitable for the developer
-   * Now uses the local database of ingested github_issues.
+   * The core Matching Engine: Finds repositories & issues suitable for the developer.
+   * 
+   * Changes from v1:
+   * - Accepts separate `languages` and `frameworks` arrays
+   * - Checks DB coverage before querying — enqueues async ingestion if sparse
+   * - Uses upsert on (userId, githubIssueId) to prevent duplicate matches
+   * - Filtering now actually works via repoLanguages JSON + difficulty
    */
-  async discoverMatchesForUser(userId: string, techStack?: string[], difficulty?: string) {
-    logger.info("Starting deterministic matching for user", { userId, techStack, difficulty });
+  async discoverMatchesForUser(
+    userId: string,
+    languages?: string[],
+    frameworks?: string[],
+    difficulty?: string
+  ) {
+    logger.info("Starting discovery for user", { userId, languages, frameworks, difficulty });
 
     const profile = await this.getProfile(userId);
+    let partialCoverage = false;
+
+    // ─── Coverage check ───
+    // Before filtering, verify we have adequate issue data for the selected languages
+    if (languages && languages.length > 0) {
+      const coverage = await issueIngestionService.getLanguageCoverage(languages);
+      const uncoveredLangs = languages.filter(l => (coverage[l] || 0) < 5);
+
+      if (uncoveredLangs.length > 0) {
+        logger.info("Sparse coverage detected, enqueueing targeted ingestion", { uncoveredLangs });
+        partialCoverage = true;
+        
+        // Enqueue targeted ingestion for uncovered languages via BullMQ
+        // Import dynamically to avoid circular deps if queue not yet initialized
+        try {
+          const { enqueueTargetedIngestion } = await import("../../infrastructure/queue/index.js");
+          for (const lang of uncoveredLangs) {
+            await enqueueTargetedIngestion(lang, difficulty);
+          }
+        } catch (err) {
+          logger.warn("Failed to enqueue targeted ingestion — queue may not be initialized", { error: err });
+          // Fall through — we'll still return whatever we have
+        }
+      }
+    }
+
+    // ─── Find & Score candidates ───
     const matchesFound = [];
 
     try {
-      // 1. Find candidates from local DB
-      const candidates = await matchingService.findCandidates(profile, techStack, difficulty);
+      const candidates = await matchingService.findCandidates(profile, languages, frameworks, difficulty);
       
-      // 2. Score each candidate
       for (const issue of candidates) {
-        // 3. Score deterministically
-        const matchResult = matchingService.scoreMatch(profile, issue, techStack, difficulty);
+        const matchResult = matchingService.scoreMatch(profile, issue, languages, frameworks, difficulty);
 
         matchesFound.push({
           userId,
@@ -61,25 +97,52 @@ export class DiscoveryService {
       }
       
       matchesFound.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
-      const topMatches = matchesFound.slice(0, 50);
+      const topMatches = matchesFound.slice(0, 30);
 
+      // ─── Upsert matches (prevents duplicates) ───
       await prisma.$transaction(async (tx) => {
-        // Only clear previously DISCOVERED matches. Save VIEWED or SAVED matches.
-        await tx.issue_match.deleteMany({
-          where: { userId, status: "DISCOVERED" }
-        });
-        
         for (const matchData of topMatches) {
-          await tx.issue_match.create({ data: matchData });
+          if (!matchData.githubIssueId) continue;
+
+          const existing = await tx.issue_match.findFirst({
+            where: {
+              userId: matchData.userId,
+              githubIssueId: matchData.githubIssueId,
+            }
+          });
+
+          if (existing) {
+            await tx.issue_match.update({
+              where: { id: existing.id },
+              data: {
+                // Refresh scoring data but don't reset SAVED/VIEWED status
+                repository: matchData.repository,
+                issueNumber: matchData.issueNumber,
+                issueTitle: matchData.issueTitle,
+                issueUrl: matchData.issueUrl,
+                complexity: matchData.complexity,
+                contributionType: matchData.contributionType,
+                technologies: matchData.technologies,
+                matchScore: matchData.matchScore,
+                reasons: matchData.reasons,
+                gaps: matchData.gaps,
+              }
+            });
+          } else {
+            await tx.issue_match.create({
+              data: matchData
+            });
+          }
         }
       });
       
     } catch (err) {
-      logger.error("Failed to execute deterministic matching", { userId, error: err });
+      logger.error("Failed to execute discovery matching", { userId, error: err });
       throw new AppError("Failed to discover issues", 500, "DISCOVERY_FAILED");
     }
 
-    return this.getMatches(userId);
+    const matches = await this.getMatches(userId);
+    return { matches, partialCoverage };
   }
 
   /**
@@ -132,9 +195,9 @@ Return a JSON object ONLY with the following exact keys:
 }`;
 
     const prompt = `Developer Profile:
-Skills: ${[...(profile.observedLanguages || []), ...(profile.currentFocus || [])].join(", ")}
-Experience: ${profile.preferredComplexity || "Unknown"}
-Interests: ${[...(profile.learningGoals || []), ...(profile.preferredContributionTypes || [])].join(", ")}
+Skills: ${[...((profile as any).observedLanguages || []), ...((profile as any).currentFocus || [])].join(", ")}
+Experience: ${(profile as any).preferredComplexity || "Unknown"}
+Interests: ${[...((profile as any).learningGoals || []), ...((profile as any).preferredContributionTypes || [])].join(", ")}
 
 Issue Context:
 Repository: ${match.repository}
