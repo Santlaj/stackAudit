@@ -247,6 +247,32 @@ Extract context and provide the deeper semantic evaluation based on the above co
       throw new AppError("Failed to evaluate match and extract context", 500, "AI_EVALUATION_FAILED");
     }
   }
+  async toggleSaveMatch(issueMatchId: string, userId: string) {
+    const match = await prisma.issue_match.findUnique({
+      where: { id: issueMatchId }
+    });
+    if (!match) throw new AppError("Match not found", 404, "MATCH_NOT_FOUND");
+    if (match.userId !== userId) throw new AppError("Unauthorized", 403, "UNAUTHORIZED");
+
+    const newStatus = match.status === "SAVED" ? "DISCOVERED" : "SAVED";
+
+    return prisma.issue_match.update({
+      where: { id: issueMatchId },
+      data: { status: newStatus },
+      include: { githubIssue: true }
+    });
+  }
+
+  async getSavedMatches(userId: string) {
+    return prisma.issue_match.findMany({
+      where: {
+        userId,
+        status: "SAVED"
+      },
+      orderBy: { updatedAt: "desc" },
+      include: { githubIssue: true }
+    });
+  }
 }
 
 export const discoveryService = new DiscoveryService();

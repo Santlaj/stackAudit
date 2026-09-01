@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShimmerLoader } from "@/components/ui/shimmer-loader";
-import { Loader2, AlertCircle, RefreshCw, Github, CheckSquare, Square, Check, Cpu, Code2, ArrowRight, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw, Github, CheckSquare, Square, Check, Cpu, Code2, ArrowRight, ExternalLink, ChevronDown, ChevronUp, Compass } from "lucide-react";
 import { 
   DeveloperProfile, 
   IssueMatch, 
@@ -13,7 +13,8 @@ import {
   ingestProfile, 
   discoverIssues, 
   getMatches, 
-  evaluateMatch 
+  evaluateMatch,
+  toggleSaveMatch
 } from "@/lib/api";
 
 import { useSession } from "@/lib/auth-client";
@@ -225,6 +226,19 @@ export function DiscoveryDashboard() {
     }
   };
 
+  const handleToggleSave = async (matchId: string) => {
+    if (!session?.user?.id) return;
+    try {
+      const updatedMatch = await toggleSaveMatch(matchId, session.user.id);
+      setMatches(prev => prev.map(m => m.id === matchId ? updatedMatch : m));
+      if (selectedMatch?.id === matchId) {
+        setSelectedMatch(updatedMatch);
+      }
+    } catch (err: any) {
+      console.error("Failed to toggle save", err);
+    }
+  };
+
   const toggleLanguage = (tech: string) => {
     setSelectedLanguages(prev => prev.includes(tech) ? prev.filter(t => t !== tech) : [...prev, tech]);
   };
@@ -267,11 +281,8 @@ export function DiscoveryDashboard() {
           className="mb-0"
         />
         
-        {/* Filters - gradient border wrapper */}
-        <div 
-          className="rounded-xl p-[1.5px] shrink-0"
-          style={{ background: 'linear-gradient(to bottom, color-mix(in srgb, var(--foreground) 15%, transparent) 0%, transparent 100px, transparent calc(100% - 100px), color-mix(in srgb, var(--foreground) 15%, transparent) 100%)' }}
-        >
+        {/* Filters */}
+        <div className="rounded-xl border border-border/60 shrink-0">
           <div className="bg-card rounded-[calc(0.75rem-1.5px)] p-3 space-y-4">
             <div 
               className="flex items-center justify-between cursor-pointer"
@@ -399,9 +410,10 @@ export function DiscoveryDashboard() {
           )}
 
           {matches.length === 0 && !loading && (
-            <div className="flex flex-col items-center justify-center py-10 text-center border border-dashed border-border/40 rounded-sm">
-              <Code2 className="h-5 w-5 text-muted-foreground/30 mb-2" />
-              <p className="text-xs font-medium text-foreground">No matches found</p>
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center border border-dashed border-border/40 rounded-sm bg-card/20">
+              <Compass className="h-8 w-8 text-muted-foreground/30 mb-4" />
+              <p className="text-sm font-medium text-foreground mb-1">Ready to discover</p>
+              <p className="text-xs text-muted-foreground max-w-[200px]">Adjust your parameters and click Discover Matches to find contribution opportunities.</p>
             </div>
           )}
 
@@ -563,17 +575,11 @@ export function DiscoveryDashboard() {
       >
         <div className="bg-card rounded-[calc(0.75rem-1.5px)] h-full flex flex-col overflow-hidden relative">
         {!selectedMatch ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 opacity-40 selection:bg-transparent">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-6">Contribution Workspace</h3>
-            <div className="text-xs text-foreground font-medium mb-8">Select an issue</div>
-            
-            <div className="w-full max-w-sm border-t border-border/40 pt-8 space-y-4 text-left flex flex-col items-center">
-              <div className="h-4 w-32 bg-muted rounded-sm"></div>
-              <div className="h-4 w-40 bg-muted rounded-sm"></div>
-              <div className="h-4 w-36 bg-muted rounded-sm"></div>
-              <div className="h-4 w-48 bg-muted rounded-sm"></div>
-              <div className="h-4 w-32 bg-muted rounded-sm"></div>
-              <div className="h-4 w-44 bg-muted rounded-sm"></div>
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 selection:bg-transparent">
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">Contribution Workspace</h3>
+            <div className="flex items-center gap-2 text-sm text-foreground font-medium px-4 py-3 border border-border/40 bg-card rounded shadow-sm text-left max-w-sm">
+              <ArrowRight className="w-5 h-5 shrink-0 text-muted-foreground rotate-180 lg:rotate-0" />
+              <span>Select an issue from the feed to view match details, code context, and contribution guidance</span>
             </div>
           </div>
         ) : panelLoading ? (
@@ -825,8 +831,15 @@ export function DiscoveryDashboard() {
 
             {/* WORKSPACE FOOTER ACTIONS */}
             <div className="p-4 border-t border-border/40 bg-card flex items-center justify-between shrink-0">
-              <Button variant="outline" className="h-8 text-xs font-medium gap-2 text-foreground/80">
-                <span className="text-[14px]">☆</span> Save Contribution
+              <Button 
+                variant="outline" 
+                onClick={() => handleToggleSave(selectedMatch.id)}
+                className="h-8 text-xs font-medium gap-2 text-foreground/80"
+              >
+                <span className="text-[14px]">
+                  {selectedMatch.status === "SAVED" ? "★" : "☆"}
+                </span> 
+                {selectedMatch.status === "SAVED" ? "Saved ✓" : "Save Contribution"}
               </Button>
               <Button 
                 variant="ghost" 

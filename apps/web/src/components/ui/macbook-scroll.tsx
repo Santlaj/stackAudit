@@ -1,4 +1,5 @@
 "use client";
+// TODO: remove after homepage rewrite ships
 import React, { useEffect, useRef, useState } from "react";
 import { MotionValue, motion, useScroll, useTransform } from "motion/react";
 import { cn } from "@/lib/utils";

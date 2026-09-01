@@ -46,6 +46,27 @@ export class DiscoveryController {
     }
   }
 
+  async toggleSaveMatch(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { matchId } = req.params;
+      const { userId } = req.body; // In a real app, this comes from auth middleware
+      const updatedMatch = await discoveryService.toggleSaveMatch(matchId, userId);
+      successResponse(res, formatMatchDto(updatedMatch), "Match save status toggled", 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getSavedMatches(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { userId } = req.params;
+      const matches = await discoveryService.getSavedMatches(userId as string);
+      successResponse(res, { matches: matches.map(formatMatchDto) }, "Saved matches retrieved", 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async discoverIssues(req: Request, res: Response, next: NextFunction) {
     try {
       const { userId, languages, frameworks, difficulty } = req.body;

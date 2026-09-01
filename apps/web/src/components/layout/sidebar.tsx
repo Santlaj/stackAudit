@@ -54,7 +54,7 @@ export function Sidebar({ className, ...props }: SidebarProps) {
       
       <div className="flex-1 overflow-auto py-3 custom-scrollbar">
         <nav className="space-y-0.5 px-2">
-          <SidebarItem href="/" icon={<Layout className="h-4 w-4" />} label="Overview" active={pathname === "/"} isCollapsed={isCollapsed} />
+          <SidebarItem href="/" icon={<Layout className="h-4 w-4" />} label="Home" active={pathname === "/"} isCollapsed={isCollapsed} />
           <SidebarItem href="/discover" icon={<Compass className="h-4 w-4" />} label="Discover" active={pathname === "/discover"} isCollapsed={isCollapsed} />
           <SidebarItem href="/saved" icon={<Bookmark className="h-4 w-4" />} label="Saved" active={pathname === "/saved"} isCollapsed={isCollapsed} />
           <SidebarItem href="/activity" icon={<Activity className="h-4 w-4" />} label="Activity" active={pathname === "/activity"} isCollapsed={isCollapsed} />
