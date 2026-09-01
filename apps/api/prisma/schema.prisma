@@ -158,6 +158,7 @@ model issue_match {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  @@unique([userId, githubIssueId])
   @@index([userId])
   @@index([repository])
   @@index([githubIssueId])
@@ -195,7 +196,10 @@ model github_issue {
   linkedPrCount   Int      @default(0)
   
   // -- Repository Context --
-  repoLanguage    String?                // Primary language of the repo
+  repoLanguage    String?                // Primary language of the repo (legacy, kept for backward compat)
+  repoLanguages   Json?                  // Full language breakdown: { "Java": 150000, "HTML": 80000 }
+  repoTopics      String[]               // Repository topics: ["react", "nextjs", "api"]
+  repoDescription String?                // Repository description text
   repoStars       Int      @default(0)
   repoOpenIssues  Int      @default(0)
   repoActivityLevel String?              // "active", "moderate", "low", "inactive"
@@ -224,5 +228,6 @@ model github_issue {
   @@index([difficultyEstimate])
   @@index([staleness])
   @@index([state])
+  @@index([state, staleness, difficultyEstimate])
   @@map("github_issues")
 }

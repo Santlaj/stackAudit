@@ -14,6 +14,8 @@ router.get("/profile/:userId", discoveryController.getProfile);
 router.post("/discover", discoveryController.discoverIssues);
 router.get("/matches/:userId", discoveryController.getMatches);
 router.post("/evaluate/:matchId", discoveryController.evaluateMatch);
+router.get("/saved/:userId", discoveryController.getSavedMatches);
+router.patch("/save/:matchId", discoveryController.toggleSaveMatch);
 
 // Development Routes (P0 Validation)
 router.post("/dev/ingest-issues", discoveryController.ingestIssues);

@@ -81,12 +81,17 @@ export async function ingestProfile(): Promise<DeveloperProfile> {
   return json.data;
 }
 
-export async function discoverIssues(userId: string, techStack?: string[], difficulty?: string): Promise<IssueMatch[]> {
+export async function discoverIssues(
+  userId: string, 
+  languages?: string[], 
+  frameworks?: string[],
+  difficulty?: string
+): Promise<{ matches: IssueMatch[], partialCoverage: boolean }> {
   const res = await fetch(`${API_BASE}/api/discovery/discover`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId, techStack, difficulty })
+    body: JSON.stringify({ userId, languages, frameworks, difficulty })
   });
   if (!res.ok) throw new Error("Failed to discover issues");
   const json = await res.json();
@@ -110,4 +115,25 @@ export async function evaluateMatch(matchId: string): Promise<IssueMatch> {
   if (!res.ok) throw new Error("Failed to evaluate match");
   const json = await res.json();
   return json.data;
+}
+
+export async function toggleSaveMatch(matchId: string, userId?: string): Promise<IssueMatch> {
+  const res = await fetch(`${API_BASE}/api/discovery/save/${matchId}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId }), // Usually server infers this from auth middleware
+  });
+  if (!res.ok) throw new Error("Failed to toggle save match");
+  const json = await res.json();
+  return json.data;
+}
+
+export async function getSavedMatches(userId: string): Promise<IssueMatch[]> {
+  const res = await fetch(`${API_BASE}/api/discovery/saved/${userId}`, {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Failed to fetch saved matches");
+  const json = await res.json();
+  return json.data.matches;
 }

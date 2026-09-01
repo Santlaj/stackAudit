@@ -478,12 +478,14 @@ export class GithubService {
     try {
       const client = createGithubClient(token);
       
-      const [repoRes, prRes] = await Promise.allSettled([
+      const [repoRes, prRes, langRes, topicsRes] = await Promise.allSettled([
         client.repos.get({ owner, repo }),
         client.search.issuesAndPullRequests({
           q: `repo:${owner}/${repo} is:pr is:closed`,
           per_page: 30, // Sample the last 30 closed PRs
-        })
+        }),
+        client.repos.listLanguages({ owner, repo }),
+        client.repos.getAllTopics({ owner, repo }),
       ]);
 
       if (repoRes.status === "rejected") {
@@ -492,6 +494,16 @@ export class GithubService {
 
       const repoData = repoRes.value.data;
       
+      // Full language byte-breakdown (e.g. { "Java": 150000, "HTML": 80000 })
+      const languages: Record<string, number> = langRes.status === "fulfilled"
+        ? (langRes.value.data as Record<string, number>)
+        : {};
+
+      // Repository topics (e.g. ["react", "nextjs", "api"])
+      const topics: string[] = topicsRes.status === "fulfilled"
+        ? (topicsRes.value.data.names || [])
+        : [];
+
       // Calculate PR acceptance rate
       let prAcceptanceRate: number | null = null;
       let prCount = 0;
@@ -522,6 +534,9 @@ export class GithubService {
 
       return {
         language: repoData.language,
+        languages,
+        topics,
+        description: repoData.description || null,
         stars: repoData.stargazers_count,
         openIssues: repoData.open_issues_count,
         pushedAt: repoData.pushed_at ? new Date(repoData.pushed_at) : null,
@@ -533,6 +548,9 @@ export class GithubService {
       logger.warn(`Failed to fetch repo context for ${owner}/${repo}`, { error: error.message });
       return { 
         language: null, 
+        languages: {} as Record<string, number>,
+        topics: [] as string[],
+        description: null,
         stars: 0, 
         openIssues: 0,
         pushedAt: null,
@@ -542,6 +560,7 @@ export class GithubService {
       };
     }
   }
+
 
   /**
    * Map GitHub API errors to AppError

@@ -1,3 +1,4 @@
+// TODO: remove after homepage rewrite ships
 "use client";
 /**
  * Note: Use position fixed according to your needs
@@ -17,6 +18,7 @@ import {
 } from "motion/react";
 
 import { useRef, useState } from "react";
+import * as React from "react";
 import Link from "next/link";
 
 export const FloatingDock = ({

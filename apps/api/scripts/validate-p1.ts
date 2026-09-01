@@ -57,7 +57,7 @@ async function main() {
   // Clear old matches for a clean test
   await prisma.issue_match.deleteMany({ where: { userId } });
   
-  const matches = await discoveryService.discoverMatchesForUser(userId);
+  const { matches } = await discoveryService.discoverMatchesForUser(userId);
   console.log(`Found ${matches.length} matches in local DB.`);
 
   console.log("\nTop 5 Matches:");

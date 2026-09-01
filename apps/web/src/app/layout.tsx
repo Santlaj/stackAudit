@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StackAudit — AI-Powered Code Security Auditor",
+  title: "StackAudit — Open-Source Contribution Intelligence",
   description:
-    "Analyze any GitHub repository for security vulnerabilities, outdated dependencies, and architectural anti-patterns using AI.",
+    "Discover open-source issues matched to your developer profile and get actionable code context to start contributing.",
 };
 
 export default function RootLayout({

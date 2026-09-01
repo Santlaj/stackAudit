@@ -60,61 +60,65 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
-      <div className="w-full max-w-lg border border-border/40 bg-card rounded-md shadow-sm overflow-hidden">
-        <div className="bg-muted/30 px-6 py-4 border-b border-border/40">
-          <h1 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">GitHub Connection</h1>
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <header className="h-14 border-b border-border/40 px-6 flex items-center">
+        <div className="flex items-center gap-2 font-semibold tracking-tight">
+          <div className="w-6 h-6 rounded flex items-center justify-center overflow-hidden">
+            <img src="/icon.png" alt="Logo" className="w-full h-full object-contain" />
+          </div>
+          <span>StackAudit</span>
         </div>
-        
-        <div className="p-6">
-          <h2 className="text-xl font-bold tracking-tight mb-2">Connect your GitHub account</h2>
-          <p className="text-sm text-foreground/80 mb-6">
-            StackAudit relies on your GitHub data to understand your experience and match you with the right issues. 
-            Connect your account to unlock:
-          </p>
+      </header>
 
-          <ul className="space-y-3 mb-8 text-sm text-foreground/90 font-medium">
-            <li className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block"></span>
-              Personalized contribution recommendations
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block"></span>
-              Developer profile analysis
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block"></span>
-              Contribution history
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block"></span>
-              Open-source achievements
-            </li>
-          </ul>
+      <main className="flex-1 flex flex-col max-w-3xl mx-auto w-full pt-16 px-6">
+        <div className="mb-2">
+          <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground font-semibold">Workspace Setup</span>
+        </div>
+        <h1 className="text-3xl font-semibold tracking-tight mb-3">Connect your GitHub account</h1>
+        <p className="text-sm text-muted-foreground max-w-xl mb-10 leading-relaxed">
+          StackAudit relies on your GitHub data to understand your experience and match you with the right issues. 
+          Connect your account to unlock personalized contribution recommendations and repository insights.
+        </p>
 
-          {error && (
-            <div className="bg-destructive/10 text-destructive border border-destructive/20 rounded-sm p-3 text-sm flex items-start gap-2 mb-6">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              <p>{error}</p>
-            </div>
-          )}
+        <div className="border-l-2 border-border/40 pl-6 space-y-6 mb-10">
+          <div>
+            <h3 className="text-sm font-medium mb-1">1. Authenticate</h3>
+            <p className="text-xs text-muted-foreground">Authorize StackAudit to read your public GitHub profile and repository data.</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium mb-1">2. Ingest Stack</h3>
+            <p className="text-xs text-muted-foreground">We'll analyze your commit history and language byte distributions.</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium mb-1">3. Discover Matches</h3>
+            <p className="text-xs text-muted-foreground">Get deterministic matches for open-source issues that fit your exact skills.</p>
+          </div>
+        </div>
 
+        {error && (
+          <div className="bg-destructive/10 text-destructive border border-destructive/20 rounded-sm p-3 text-sm flex items-start gap-2 mb-6 max-w-md">
+            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+            <p>{error}</p>
+          </div>
+        )}
+
+        <div className="flex items-center gap-4">
           <button
             onClick={handleConnectGithub}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 bg-foreground text-background hover:bg-foreground/90 font-medium px-4 py-2.5 rounded-sm transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 bg-foreground text-background hover:bg-foreground/90 font-medium px-5 py-2.5 rounded-sm transition-colors disabled:opacity-50 text-sm shadow-sm"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Github className="w-4 h-4" />}
             Connect GitHub
           </button>
-
-          <div className="mt-4 text-center">
-            <a href="/onboarding/profile" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-              Skip for now
-            </a>
-          </div>
+          <button
+            onClick={() => router.push("/onboarding/profile")}
+            className="text-xs text-muted-foreground hover:text-foreground font-medium px-4 py-2.5 transition-colors"
+          >
+            Skip for now
+          </button>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

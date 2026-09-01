@@ -1,4 +1,5 @@
 "use client";
+// TODO: remove after homepage rewrite ships
 import React, { useEffect, useRef, useState } from "react";
 import { MotionValue, motion, useScroll, useTransform } from "motion/react";
 import { cn } from "@/lib/utils";
@@ -652,8 +653,8 @@ export const OptionKey = ({ className }: { className: string }) => {
 const StackAuditLogo = () => {
   return (
     <div className="flex items-center gap-1.5 select-none">
-      <div className="flex h-5 w-5 items-center justify-center rounded bg-white/10 border border-white/20">
-        <span className="text-[8px] font-bold text-white">SA</span>
+      <div className="flex h-5 w-5 items-center justify-center rounded overflow-hidden">
+        <img src="/icon.png" alt="StackAudit Logo" className="w-full h-full object-contain" />
       </div>
       <span className="text-[10px] font-semibold tracking-tight text-white/60">StackAudit</span>
     </div>

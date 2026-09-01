@@ -9,7 +9,7 @@ import { ProfileForm } from "@/components/profile/profile-form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Github, Loader2, Mail, CheckCircle2, Award, GitPullRequest, Settings2 } from "lucide-react";
+import { Github, Loader2, Mail, CheckCircle2, Award, GitPullRequest, Settings2, Code2 } from "lucide-react";
 
 export default function ProfilePage() {
   const { data: session } = useSession();
@@ -222,21 +222,40 @@ export default function ProfilePage() {
                   </div>
                 </section>
 
-                {/* ACTIVITY (Empty State) */}
+                {/* CONTRIBUTION READINESS */}
                 <section>
-                  <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Recent Activity</h3>
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground py-2">
-                    <GitPullRequest className="w-4 h-4 opacity-50" />
-                    <span>No recent activity tracked yet.</span>
-                  </div>
-                </section>
-
-                {/* ACHIEVEMENTS (Empty State) */}
-                <section>
-                  <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Achievements</h3>
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground py-2">
-                    <Award className="w-4 h-4 opacity-50" />
-                    <span>No achievements unlocked yet.</span>
+                  <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Contribution Readiness</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-sm border-b border-border/40 pb-3">
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        <Github className="w-4 h-4" /> GitHub Connected
+                      </span>
+                      {hasGithub ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <span className="text-destructive font-medium text-xs">Action Required</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between text-sm border-b border-border/40 pb-3">
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        <Code2 className="w-4 h-4" /> Languages Detected
+                      </span>
+                      {profile?.observedLanguages && profile.observedLanguages.length > 0 ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <span className="text-amber-500 font-medium text-xs">Missing</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between text-sm pb-1">
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        <Settings2 className="w-4 h-4" /> Preferences Set
+                      </span>
+                      {profile?.preferredComplexity ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <span className="text-amber-500 font-medium text-xs">Missing</span>
+                      )}
+                    </div>
                   </div>
                 </section>
 

@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import { Menu, Search, Bell, ChevronRight } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useSession, signIn, signOut } from "@/lib/auth-client"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { GooeyInput } from "@/components/ui/gooey-input"
 
 export interface TopbarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -36,9 +36,11 @@ export function Topbar({ className, onMenuClick, children, ...props }: TopbarPro
 
         {/* Breadcrumbs / Page Context */}
         <nav className="hidden md:flex items-center text-sm text-muted-foreground">
-          <span className="hover:text-foreground cursor-pointer transition-colors duration-150">StackAudit</span>
+          <span className="hover:text-foreground cursor-pointer transition-colors duration-150" onClick={() => router.push("/")}>StackAudit</span>
           <ChevronRight className="mx-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
-          <span className="font-medium text-foreground">Overview</span>
+          <span className="font-medium text-foreground capitalize">
+            {usePathname().split('/')[1] || "Home"}
+          </span>
         </nav>
       </div>
 

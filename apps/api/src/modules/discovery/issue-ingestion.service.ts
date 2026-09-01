@@ -19,6 +19,42 @@ import { logger } from "../../utils/logger.js";
  */
 export class IssueIngestionService {
   /**
+   * Ingest issues for a specific programming language.
+   * 
+   * Used by:
+   *  - Background broad-sweep cron (iterates over ~25-30 languages)
+   *  - Targeted on-demand ingestion when a language has no DB coverage
+   *  - ingestIssuesForUser() (calls per-language internally)
+   * 
+   * @returns The number of issues ingested or updated
+   */
+  async ingestIssuesForLanguage(language: string, token?: string, difficulty?: string) {
+    logger.info("Ingesting issues for language", { language, difficulty });
+
+    const labelSets = this.getLabelSetsForComplexity(difficulty || "beginner");
+    let allIssues: EnrichedIssueResult[] = [];
+
+    for (const labels of labelSets) {
+      try {
+        const issues = await githubService.searchIssuesEnriched(
+          [language],
+          labels,
+          token,
+          15
+        );
+        allIssues.push(...issues);
+      } catch (err) {
+        logger.warn("Failed to search with label set", { language, labels, error: err });
+      }
+    }
+
+    const uniqueIssues = this.deduplicateIssues(allIssues);
+    logger.info(`Found ${uniqueIssues.length} unique issues for ${language}`);
+
+    return this.persistIssues(uniqueIssues, token);
+  }
+
+  /**
    * Discover and ingest issues relevant to a user's profile.
    * 
    * Reads the user's developer_profile to determine languages and preferences,
@@ -46,143 +82,54 @@ export class IssueIngestionService {
       const focus: string[] = profile.currentFocus || [];
       
       const combined = [...new Set([...focus, ...recent, ...observed])];
-      searchLanguages = combined.slice(0, 3); // Max 3 for API efficiency
+      searchLanguages = combined.slice(0, 5); // Max 5 for broader coverage
     }
 
-    // We don't fall back to JavaScript if the profile is genuinely empty.
-    // However, if the user explicitly provided search languages during discovery,
-    // they should be handled by the frontend passing them down.
-    // For general background ingestion without techStack selected, we search without language filters
-    // or rely on the frontend to require techStack selection.
-
-    // 2. Determine label sets based on user preferences
     // @ts-ignore
     const complexity = profile?.preferredComplexity || "beginner";
-    const labelSets = this.getLabelSetsForComplexity(complexity);
 
-    // 3. Search with multiple label sets for broader coverage
-    let allIssues: EnrichedIssueResult[] = [];
+    let totalIngested = 0;
+    let totalFound = 0;
 
-    for (const labels of labelSets) {
-      try {
-        const issues = await githubService.searchIssuesEnriched(
-          searchLanguages,
-          labels,
-          token,
-          15
-        );
-        allIssues.push(...issues);
-      } catch (err) {
-        logger.warn("Failed to search with label set", { labels, error: err });
-      }
+    for (const lang of searchLanguages) {
+      const result = await this.ingestIssuesForLanguage(lang, token, complexity);
+      totalIngested += result.ingestedCount;
+      totalFound += result.totalFound;
     }
 
-    // 4. Deduplicate by githubId
-    const uniqueIssues = this.deduplicateIssues(allIssues);
-    logger.info(`Found ${uniqueIssues.length} unique issues to ingest`, { userId });
-
-    // 5. Fetch repository context (batched, one per unique repo)
-    const repoContextCache = new Map<string, Awaited<ReturnType<typeof githubService.getRepositoryContext>>>();
-
-    for (const issue of uniqueIssues) {
-      if (!repoContextCache.has(issue.repository)) {
-        const [owner, repo] = issue.repository.split("/");
-        const context = await githubService.getRepositoryContext(owner, repo, token);
-        repoContextCache.set(issue.repository, context);
-      }
+    // Also do an unfiltered search if no languages found
+    if (searchLanguages.length === 0) {
+      const result = await this.ingestIssuesForLanguage("", token, complexity);
+      totalIngested += result.ingestedCount;
+      totalFound += result.totalFound;
     }
 
-    // 6. Derive signals and upsert each issue
-    let ingestedCount = 0;
+    logger.info("Issue ingestion complete", { userId, totalIngested, totalFound });
+    return { ingestedCount: totalIngested, totalFound };
+  }
 
-    for (const issue of uniqueIssues) {
-      try {
-        const repoContext = repoContextCache.get(issue.repository) || { 
-          language: null, 
-          stars: 0, 
-          openIssues: 0,
-          pushedAt: null,
-          updatedAt: null,
-          prAcceptanceRate: null,
-          activityLevel: "inactive"
-        };
-        const signals = deriveAllSignals(issue);
-
-        await prisma.github_issue.upsert({
-          where: {
-            repository_issueNumber: {
-              repository: issue.repository,
-              issueNumber: issue.issueNumber,
-            },
-          },
-          update: {
-            title: issue.title,
-            body: issue.body,
-            url: issue.url,
-            state: issue.state,
-            issueUpdatedAt: issue.issueUpdatedAt,
-            closedAt: issue.closedAt,
-            labels: issue.labels,
-            commentsCount: issue.commentsCount,
-            reactionsTotal: issue.reactionsTotal,
-            assigneeCount: issue.assigneeCount,
-            linkedPrCount: issue.linkedPrCount,
-            repoLanguage: repoContext.language,
-            repoStars: repoContext.stars,
-            repoOpenIssues: repoContext.openIssues,
-            repoActivityLevel: repoContext.activityLevel,
-            repoLastPushedAt: repoContext.pushedAt,
-            repoLastUpdatedAt: repoContext.updatedAt,
-            repoPrAcceptanceRate: repoContext.prAcceptanceRate,
-            // Recompute derived signals on update
-            staleness: signals.staleness,
-            activityLevel: signals.activityLevel,
-            difficultyEstimate: signals.difficultyEstimate,
-            issueType: signals.issueType,
-            isGoodFirstIssue: signals.isGoodFirstIssue,
-            isHelpWanted: signals.isHelpWanted,
-            lastSyncedAt: new Date(),
-          },
-          create: {
-            githubId: BigInt(issue.githubId),
-            repository: issue.repository,
-            issueNumber: issue.issueNumber,
-            title: issue.title,
-            body: issue.body,
-            url: issue.url,
-            state: issue.state,
-            issueCreatedAt: issue.issueCreatedAt,
-            issueUpdatedAt: issue.issueUpdatedAt,
-            closedAt: issue.closedAt,
-            labels: issue.labels,
-            commentsCount: issue.commentsCount,
-            reactionsTotal: issue.reactionsTotal,
-            assigneeCount: issue.assigneeCount,
-            linkedPrCount: issue.linkedPrCount,
-            repoLanguage: repoContext.language,
-            repoStars: repoContext.stars,
-            repoOpenIssues: repoContext.openIssues,
-            repoActivityLevel: repoContext.activityLevel,
-            repoLastPushedAt: repoContext.pushedAt,
-            repoLastUpdatedAt: repoContext.updatedAt,
-            repoPrAcceptanceRate: repoContext.prAcceptanceRate,
-            staleness: signals.staleness,
-            activityLevel: signals.activityLevel,
-            difficultyEstimate: signals.difficultyEstimate,
-            issueType: signals.issueType,
-            isGoodFirstIssue: signals.isGoodFirstIssue,
-            isHelpWanted: signals.isHelpWanted,
-          },
-        } as any);
-
-        ingestedCount++;
-      } catch (err) {
-        logger.warn(`Failed to upsert issue ${issue.repository}#${issue.issueNumber}`, { error: err });
-      }
+  /**
+   * Check how many issues exist in the DB for given languages.
+   * Used by discovery service to determine if targeted ingestion is needed.
+   */
+  async getLanguageCoverage(languages: string[]): Promise<Record<string, number>> {
+    const coverage: Record<string, number> = {};
+    
+    for (const lang of languages) {
+      // Check both the legacy repoLanguage field and the new repoLanguages JSON
+      const count = await prisma.github_issue.count({
+        where: {
+          state: "open",
+          OR: [
+            { repoLanguage: { equals: lang, mode: "insensitive" } },
+            // Raw query for JSON key check would be more efficient, but this works for coverage check
+          ]
+        }
+      });
+      coverage[lang] = count;
     }
-
-    logger.info("Issue ingestion complete", { userId, ingestedCount, totalFound: uniqueIssues.length });
-    return { ingestedCount, totalFound: uniqueIssues.length };
+    
+    return coverage;
   }
 
   /**
@@ -225,6 +172,9 @@ export class IssueIngestionService {
         assigneeCount: issueData.assigneeCount,
         linkedPrCount: issueData.linkedPrCount,
         repoLanguage: repoContext.language,
+        repoLanguages: repoContext.languages,
+        repoTopics: repoContext.topics,
+        repoDescription: repoContext.description,
         repoStars: repoContext.stars,
         repoOpenIssues: repoContext.openIssues,
         repoActivityLevel: repoContext.activityLevel,
@@ -256,6 +206,9 @@ export class IssueIngestionService {
         assigneeCount: issueData.assigneeCount,
         linkedPrCount: issueData.linkedPrCount,
         repoLanguage: repoContext.language,
+        repoLanguages: repoContext.languages,
+        repoTopics: repoContext.topics,
+        repoDescription: repoContext.description,
         repoStars: repoContext.stars,
         repoOpenIssues: repoContext.openIssues,
         repoActivityLevel: repoContext.activityLevel,
@@ -321,6 +274,123 @@ export class IssueIngestionService {
   }
 
   // ─── Private Helpers ──────────────────────────────
+
+  /**
+   * Persist a batch of enriched issues into the database.
+   * Fetches repo context (languages, topics) and derives signals for each.
+   */
+  private async persistIssues(uniqueIssues: EnrichedIssueResult[], token?: string) {
+    // Fetch repository context (batched, one per unique repo)
+    const repoContextCache = new Map<string, Awaited<ReturnType<typeof githubService.getRepositoryContext>>>();
+
+    for (const issue of uniqueIssues) {
+      if (!repoContextCache.has(issue.repository)) {
+        const [owner, repo] = issue.repository.split("/");
+        const context = await githubService.getRepositoryContext(owner, repo, token);
+        repoContextCache.set(issue.repository, context);
+      }
+    }
+
+    let ingestedCount = 0;
+
+    for (const issue of uniqueIssues) {
+      try {
+        const repoContext = repoContextCache.get(issue.repository) || { 
+          language: null, 
+          languages: {} as Record<string, number>,
+          topics: [] as string[],
+          description: null,
+          stars: 0, 
+          openIssues: 0,
+          pushedAt: null,
+          updatedAt: null,
+          prAcceptanceRate: null,
+          activityLevel: "inactive"
+        };
+        const signals = deriveAllSignals(issue);
+
+        await prisma.github_issue.upsert({
+          where: {
+            repository_issueNumber: {
+              repository: issue.repository,
+              issueNumber: issue.issueNumber,
+            },
+          },
+          update: {
+            title: issue.title,
+            body: issue.body,
+            url: issue.url,
+            state: issue.state,
+            issueUpdatedAt: issue.issueUpdatedAt,
+            closedAt: issue.closedAt,
+            labels: issue.labels,
+            commentsCount: issue.commentsCount,
+            reactionsTotal: issue.reactionsTotal,
+            assigneeCount: issue.assigneeCount,
+            linkedPrCount: issue.linkedPrCount,
+            repoLanguage: repoContext.language,
+            repoLanguages: repoContext.languages,
+            repoTopics: repoContext.topics,
+            repoDescription: repoContext.description,
+            repoStars: repoContext.stars,
+            repoOpenIssues: repoContext.openIssues,
+            repoActivityLevel: repoContext.activityLevel,
+            repoLastPushedAt: repoContext.pushedAt,
+            repoLastUpdatedAt: repoContext.updatedAt,
+            repoPrAcceptanceRate: repoContext.prAcceptanceRate,
+            // Recompute derived signals on update
+            staleness: signals.staleness,
+            activityLevel: signals.activityLevel,
+            difficultyEstimate: signals.difficultyEstimate,
+            issueType: signals.issueType,
+            isGoodFirstIssue: signals.isGoodFirstIssue,
+            isHelpWanted: signals.isHelpWanted,
+            lastSyncedAt: new Date(),
+          },
+          create: {
+            githubId: BigInt(issue.githubId),
+            repository: issue.repository,
+            issueNumber: issue.issueNumber,
+            title: issue.title,
+            body: issue.body,
+            url: issue.url,
+            state: issue.state,
+            issueCreatedAt: issue.issueCreatedAt,
+            issueUpdatedAt: issue.issueUpdatedAt,
+            closedAt: issue.closedAt,
+            labels: issue.labels,
+            commentsCount: issue.commentsCount,
+            reactionsTotal: issue.reactionsTotal,
+            assigneeCount: issue.assigneeCount,
+            linkedPrCount: issue.linkedPrCount,
+            repoLanguage: repoContext.language,
+            repoLanguages: repoContext.languages,
+            repoTopics: repoContext.topics,
+            repoDescription: repoContext.description,
+            repoStars: repoContext.stars,
+            repoOpenIssues: repoContext.openIssues,
+            repoActivityLevel: repoContext.activityLevel,
+            repoLastPushedAt: repoContext.pushedAt,
+            repoLastUpdatedAt: repoContext.updatedAt,
+            repoPrAcceptanceRate: repoContext.prAcceptanceRate,
+            staleness: signals.staleness,
+            activityLevel: signals.activityLevel,
+            difficultyEstimate: signals.difficultyEstimate,
+            issueType: signals.issueType,
+            isGoodFirstIssue: signals.isGoodFirstIssue,
+            isHelpWanted: signals.isHelpWanted,
+          },
+        } as any);
+
+        ingestedCount++;
+      } catch (err) {
+        logger.warn(`Failed to upsert issue ${issue.repository}#${issue.issueNumber}`, { error: err });
+      }
+    }
+
+    logger.info("Issue batch persisted", { ingestedCount, totalFound: uniqueIssues.length });
+    return { ingestedCount, totalFound: uniqueIssues.length };
+  }
 
   /**
    * Map user's preferred complexity to GitHub label search sets.

@@ -1,3 +1,4 @@
+// TODO: remove after homepage rewrite ships
 "use client";
 
 import React, { useState } from "react";

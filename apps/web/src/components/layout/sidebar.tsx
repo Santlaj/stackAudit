@@ -44,8 +44,8 @@ export function Sidebar({ className, ...props }: SidebarProps) {
         
         {!isCollapsed && (
           <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight text-foreground ml-2 overflow-hidden">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-foreground text-background">
-              <span className="text-[10px] font-bold">SA</span>
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded overflow-hidden">
+              <img src="/icon.png" alt="StackAudit Logo" className="w-full h-full object-contain" />
             </div>
             <span className="truncate">StackAudit</span>
           </Link>
@@ -54,7 +54,7 @@ export function Sidebar({ className, ...props }: SidebarProps) {
       
       <div className="flex-1 overflow-auto py-3 custom-scrollbar">
         <nav className="space-y-0.5 px-2">
-          <SidebarItem href="/" icon={<Layout className="h-4 w-4" />} label="Overview" active={pathname === "/"} isCollapsed={isCollapsed} />
+          <SidebarItem href="/" icon={<Layout className="h-4 w-4" />} label="Home" active={pathname === "/"} isCollapsed={isCollapsed} />
           <SidebarItem href="/discover" icon={<Compass className="h-4 w-4" />} label="Discover" active={pathname === "/discover"} isCollapsed={isCollapsed} />
           <SidebarItem href="/saved" icon={<Bookmark className="h-4 w-4" />} label="Saved" active={pathname === "/saved"} isCollapsed={isCollapsed} />
           <SidebarItem href="/activity" icon={<Activity className="h-4 w-4" />} label="Activity" active={pathname === "/activity"} isCollapsed={isCollapsed} />
