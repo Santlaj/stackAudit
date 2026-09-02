@@ -20,6 +20,7 @@ import {
 import { useSession } from "@/lib/auth-client";
 import { Slider } from "@/components/ui/slider";
 import { PageHeader } from "@/components/layout/page-container";
+import { useRouter } from "next/navigation";
 
 const CardCornerTopLeft = ({ id, fromColor, toColor }: { id: string, fromColor: string, toColor: string }) => (
   <svg className="absolute top-[-1px] left-[-1px] pointer-events-none z-10" width="60" height="60" viewBox="0 0 60 60" fill="none">
@@ -57,6 +58,7 @@ const CardCornerBottomRight = ({ id, fromColor, toColor }: { id: string, fromCol
 
 export function DiscoveryDashboard() {
   const { data: session } = useSession();
+  const router = useRouter();
   
   const [profile, setProfile] = useState<DeveloperProfile | null>(null);
   const [matches, setMatches] = useState<IssueMatch[]>([]);
@@ -210,26 +212,12 @@ export function DiscoveryDashboard() {
   };
 
   const handleEvaluate = async (matchId: string) => {
-    setEvaluating(prev => ({ ...prev, [matchId]: true }));
-    setError(null);
-    try {
-      const updatedMatch = await evaluateMatch(matchId);
-      setMatches(prev => prev.map(m => m.id === matchId ? updatedMatch : m));
-      if (selectedMatch?.id === matchId) {
-        setSelectedMatch(updatedMatch);
-      }
-    } catch (err: any) {
-      console.error("Evaluation failed", err);
-      setError("Failed to extract context. Check backend logs.");
-    } finally {
-      setEvaluating(prev => ({ ...prev, [matchId]: false }));
-    }
+    router.push(`/analyze/${matchId}`);
   };
 
   const handleToggleSave = async (matchId: string) => {
-    if (!session?.user?.id) return;
     try {
-      const updatedMatch = await toggleSaveMatch(matchId, session.user.id);
+      const updatedMatch = await toggleSaveMatch(matchId);
       setMatches(prev => prev.map(m => m.id === matchId ? updatedMatch : m));
       if (selectedMatch?.id === matchId) {
         setSelectedMatch(updatedMatch);
@@ -778,50 +766,68 @@ export function DiscoveryDashboard() {
                   </section>
                 )}
 
-                {/* CONTRIBUTION CONTEXT (P2.2 Placeholder / Old Logic) */}
+                {/* CONTRIBUTION CONTEXT */}
                 <section className="flex-1 flex flex-col">
                   <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">CONTRIBUTION CONTEXT</h3>
                   
-                  {selectedMatch.status === "DISCOVERED" ? (
+                  {selectedMatch.status === "DISCOVERED" || selectedMatch.status === "SAVED" ? (
                     <div className="flex-1 flex flex-col items-center justify-center py-6 text-center border border-dashed border-border/50 rounded-sm bg-background/50">
                       <Cpu className="w-6 h-6 text-muted-foreground/40 mb-3" />
                       <p className="text-xs text-muted-foreground max-w-[200px] mb-4">
-                        Extract deep context to understand architecture, target files, and implementation guidance.
+                        Explore the repository context behind this match.
                       </p>
                       <Button 
                         onClick={() => handleEvaluate(selectedMatch.id)}
-                        disabled={evaluating[selectedMatch.id]}
-                        className="h-8 text-xs bg-foreground text-background"
+                        className="h-8 text-xs bg-foreground text-background font-medium px-4"
                       >
-                        {evaluating[selectedMatch.id] ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : null}
-                        Extract Context
+                        Open Workspace &rarr;
                       </Button>
                     </div>
                   ) : (
-                    <div className="space-y-6 flex-1">
-                      {/* Old layout remains for now, will be updated in P2.2 */}
-                      {selectedMatch.architecturalContext && (
-                        <div>
-                          <div className="text-xs font-semibold mb-1">Architecture</div>
-                          <p className="text-xs text-muted-foreground">{selectedMatch.architecturalContext}</p>
+                    <div className="space-y-4 flex-1">
+                      {/* Contextual Preview */}
+                      <div className="flex-1 flex flex-col py-4 px-5 border border-border/60 rounded-sm bg-card shadow-sm text-left">
+                        {selectedMatch.architecturalContext ? (
+                          <>
+                            <div className="mb-4">
+                              <div className="text-xs text-muted-foreground mb-1">Architecture</div>
+                              <div className="text-sm font-medium text-foreground truncate">
+                                {selectedMatch.architecturalContext.split('\n')[0]}
+                              </div>
+                            </div>
+                            
+                            <div className="mb-4">
+                              <div className="text-xs text-muted-foreground mb-1">Relevant Files</div>
+                              <div className="text-sm font-medium text-foreground">
+                                {selectedMatch.relevantFiles?.length || 0} files identified
+                              </div>
+                            </div>
+                            
+                            <div className="mb-6">
+                              <div className="text-xs text-muted-foreground mb-1">Implementation Guidance</div>
+                              <div className="text-sm font-medium text-foreground">
+                                {selectedMatch.implementationApproach ? "Steps identified" : "Not available"}
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex-1 flex flex-col items-center justify-center py-4 text-center">
+                            <CheckSquare className="w-6 h-6 text-emerald-500 mb-3" />
+                            <p className="text-xs text-muted-foreground mb-4">
+                              Analysis completed. Ready to start contributing.
+                            </p>
+                          </div>
+                        )}
+                        
+                        <div className="mt-auto pt-4 border-t border-border/40">
+                          <Button 
+                            onClick={() => handleEvaluate(selectedMatch.id)}
+                            className="w-full h-8 text-xs bg-foreground text-background font-medium"
+                          >
+                            Open Workspace &rarr;
+                          </Button>
                         </div>
-                      )}
-                      {selectedMatch.relevantFiles && selectedMatch.relevantFiles.length > 0 && (
-                        <div>
-                          <div className="text-xs font-semibold mb-2">Relevant Files</div>
-                          <ul className="text-xs space-y-1">
-                            {selectedMatch.relevantFiles.map((file, i) => (
-                              <li key={i} className="font-mono text-[10px] bg-muted/50 px-1.5 py-0.5 rounded-sm w-fit text-muted-foreground">{file}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {selectedMatch.implementationApproach && (
-                        <div>
-                          <div className="text-xs font-semibold mb-1">Implementation Approach</div>
-                          <p className="text-xs text-muted-foreground">{selectedMatch.implementationApproach}</p>
-                        </div>
-                      )}
+                      </div>
                     </div>
                   )}
                 </section>
