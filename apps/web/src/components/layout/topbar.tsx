@@ -16,6 +16,7 @@ export interface TopbarProps extends React.HTMLAttributes<HTMLDivElement> {
 export function Topbar({ className, onMenuClick, children, ...props }: TopbarProps) {
   const { data: session } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
   return (
     <header
@@ -39,7 +40,7 @@ export function Topbar({ className, onMenuClick, children, ...props }: TopbarPro
           <span className="hover:text-foreground cursor-pointer transition-colors duration-150" onClick={() => router.push("/")}>StackAudit</span>
           <ChevronRight className="mx-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
           <span className="font-medium text-foreground capitalize">
-            {usePathname().split('/')[1] || "Home"}
+            {pathname.split('/')[1] || "Home"}
           </span>
         </nav>
       </div>

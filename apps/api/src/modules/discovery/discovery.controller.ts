@@ -24,6 +24,13 @@ function formatMatchDto(match: any) {
     relevantFiles: match.relevantFiles,
     implementationApproach: match.implementationApproach,
     status: match.status,
+    // Issue detail fields from the linked github_issue
+    issueBody: match.githubIssue?.body ?? null,
+    issueCreatedAt: match.githubIssue?.issueCreatedAt ?? null,
+    issueUpdatedAt: match.githubIssue?.issueUpdatedAt ?? null,
+    issueLabels: match.githubIssue?.labels ?? [],
+    commentsCount: match.githubIssue?.commentsCount ?? 0,
+    reactionsTotal: match.githubIssue?.reactionsTotal ?? 0,
     repositoryActivity: match.githubIssue ? {
       status: match.githubIssue.repoActivityLevel || "unknown",
       lastActivityAt: match.githubIssue.repoLastUpdatedAt || match.githubIssue.repoLastPushedAt || null,

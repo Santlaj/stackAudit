@@ -9,7 +9,7 @@ import { ProfileForm } from "@/components/profile/profile-form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Github, Loader2, Mail, CheckCircle2, Award, GitPullRequest, Settings2, Code2 } from "lucide-react";
+import { Github, Loader2, Mail, CheckCircle2, Settings2, Code2 } from "lucide-react";
 
 export default function ProfilePage() {
   const { data: session } = useSession();

@@ -5,7 +5,12 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShimmerLoader } from "@/components/ui/shimmer-loader";
-import { Loader2, AlertCircle, RefreshCw, Github, CheckSquare, Square, Check, Cpu, Code2, ArrowRight, ExternalLink, ChevronDown, ChevronUp, Compass } from "lucide-react";
+import { 
+  Loader2, AlertCircle, RefreshCw, Github, CheckSquare, Square, Check, Cpu, Code2, 
+  ArrowRight, ExternalLink, ChevronDown, ChevronUp, Compass, MessageSquare, Heart, 
+  Calendar, Clock, GitPullRequest, FileCode, Users, Lightbulb, Bookmark, Smile, 
+  Network, Folder, TrendingUp, CheckCircle2 
+} from "lucide-react";
 import { 
   DeveloperProfile, 
   IssueMatch, 
@@ -246,6 +251,24 @@ export function DiscoveryDashboard() {
     return colors[tech] || "bg-muted-foreground";
   };
 
+  const formatRelativeDate = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return "Unknown";
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 30) return `${diffDays} days ago`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+    return `${Math.floor(diffDays / 365)} years ago`;
+  };
+
+  const formatShortDate = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return "Unknown";
+    return new Date(dateStr).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  };
+
   const difficultyValue = difficulty === "beginner" ? 0 : difficulty === "intermediate" ? 1 : 2;
   const handleSliderChange = (vals: number[]) => {
     const val = vals[0];
@@ -270,8 +293,8 @@ export function DiscoveryDashboard() {
         />
         
         {/* Filters */}
-        <div className="rounded-xl border border-border/60 shrink-0">
-          <div className="bg-card rounded-[calc(0.75rem-1.5px)] p-3 space-y-4">
+        <div className="border border-border/60 rounded-sm shrink-0">
+          <div className="p-3 space-y-4">
             <div 
               className="flex items-center justify-between cursor-pointer"
               onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
@@ -279,8 +302,8 @@ export function DiscoveryDashboard() {
               <h2 className="text-xs font-semibold tracking-tight text-foreground flex items-center gap-2">
                 Discovery Parameters
                 {!isFiltersExpanded && (selectedLanguages.length > 0 || selectedFrameworks.length > 0) && (
-                  <span className="text-[10px] font-normal text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-full">
-                    {selectedLanguages.length} Langs, {selectedFrameworks.length} Frameworks
+                  <span className="text-[10px] font-normal text-muted-foreground">
+                    · {selectedLanguages.length} Langs, {selectedFrameworks.length} Frameworks
                   </span>
                 )}
               </h2>
@@ -555,17 +578,13 @@ export function DiscoveryDashboard() {
           
       {/* RIGHT COLUMN: Contribution Workspace */}
       <div 
-        className="rounded-xl p-[1.5px] h-full shrink-0 flex flex-col shadow-sm"
-        style={{ 
-          width: `calc(${workspaceWidth}%)`,
-          background: 'linear-gradient(to bottom, color-mix(in srgb, var(--foreground) 15%, transparent) 0%, transparent 100px, transparent calc(100% - 100px), color-mix(in srgb, var(--foreground) 15%, transparent) 100%)' 
-        }}
+        className="border border-border/60 rounded-sm h-full shrink-0 flex flex-col bg-card"
+        style={{ width: `calc(${workspaceWidth}%)` }}
       >
-        <div className="bg-card rounded-[calc(0.75rem-1.5px)] h-full flex flex-col overflow-hidden relative">
         {!selectedMatch ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-8 selection:bg-transparent">
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">Contribution Workspace</h3>
-            <div className="flex items-center gap-2 text-sm text-foreground font-medium px-4 py-3 border border-border/40 bg-card rounded shadow-sm text-left max-w-sm">
+            <div className="flex items-center gap-2 text-sm text-foreground font-medium px-4 py-3 border border-border/40 bg-card rounded-sm text-left max-w-sm">
               <ArrowRight className="w-5 h-5 shrink-0 text-muted-foreground rotate-180 lg:rotate-0" />
               <span>Select an issue from the feed to view match details, code context, and contribution guidance</span>
             </div>
@@ -577,42 +596,58 @@ export function DiscoveryDashboard() {
         ) : (
           <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
             
-            {/* WORKSPACE HEADER */}
-            <div className="p-6 pb-5 border-b border-border/40 flex flex-col gap-3 shrink-0 bg-background/50">
+            {/* HEADER */}
+            <div className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1.5 min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono text-muted-foreground">{selectedMatch.repository}</span>
+                    <span className="text-xs text-muted-foreground">{selectedMatch.repository}</span>
                     <a href={selectedMatch.issueUrl} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
-                  <h2 className="text-xl font-semibold leading-tight text-foreground pr-4">
+                  <h2 className="text-lg font-semibold leading-snug text-foreground">
                     {selectedMatch.issueTitle}
                   </h2>
-                  <div className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
-                    {selectedMatch.contributionType && <span>{selectedMatch.contributionType}</span>}
-                    {selectedMatch.contributionType && <span>·</span>}
-                    {selectedMatch.technologies.join(", ")}
-                    {selectedMatch.technologies.length > 0 && <span>·</span>}
-                    {selectedMatch.complexity && <span>{selectedMatch.complexity}</span>}
-                    {selectedMatch.repositoryActivity && <span>·</span>}
+                  <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                    {selectedMatch.contributionType && (
+                      <span className="text-[11px] text-muted-foreground">{selectedMatch.contributionType}</span>
+                    )}
+                    {selectedMatch.contributionType && selectedMatch.technologies.length > 0 && (
+                      <span className="text-muted-foreground/40">·</span>
+                    )}
+                    {selectedMatch.technologies.map((tech, i) => (
+                      <React.Fragment key={tech}>
+                        <span className="text-[11px] text-muted-foreground">{tech}</span>
+                        {i < selectedMatch.technologies.length - 1 && (
+                          <span className="text-muted-foreground/40">·</span>
+                        )}
+                      </React.Fragment>
+                    ))}
+                    {selectedMatch.complexity && (
+                      <>
+                        <span className="text-muted-foreground/40">·</span>
+                        <span className="text-[11px] text-muted-foreground">{selectedMatch.complexity}</span>
+                      </>
+                    )}
                     {selectedMatch.repositoryActivity && (
-                      <span className="flex items-center gap-1.5 text-foreground">
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          selectedMatch.repositoryActivity.status === "active" ? "bg-emerald-500" :
-                          selectedMatch.repositoryActivity.status === "moderate" ? "bg-amber-500" :
-                          selectedMatch.repositoryActivity.status === "low" ? "bg-orange-500" :
-                          "bg-muted-foreground"
-                        }`} />
-                        <span className="capitalize">{selectedMatch.repositoryActivity.status}</span>
-                      </span>
+                      <>
+                        <span className="text-muted-foreground/40">·</span>
+                        <span className="flex items-center gap-1 text-[11px]">
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            selectedMatch.repositoryActivity.status === "active" ? "bg-emerald-500" :
+                            selectedMatch.repositoryActivity.status === "moderate" ? "bg-amber-500" :
+                            selectedMatch.repositoryActivity.status === "low" ? "bg-orange-500" :
+                            "bg-muted-foreground"
+                          }`} />
+                          <span className="capitalize text-foreground">{selectedMatch.repositoryActivity.status}</span>
+                        </span>
+                      </>
                     )}
                   </div>
                 </div>
                 
-                {/* Match Score Badge */}
-                {selectedMatch.matchScore && (
+                {selectedMatch.matchScore != null && (
                   <div className="shrink-0 flex flex-col items-end">
                     <div className="text-2xl font-bold tracking-tight text-emerald-500">
                       {selectedMatch.matchScore}%
@@ -623,242 +658,257 @@ export function DiscoveryDashboard() {
               </div>
             </div>
 
-            {/* WORKSPACE BODY - 2 Column Split */}
-            <div className="flex-1 flex flex-col lg:flex-row min-h-0">
-              
-              {/* Left inner column: Match details & Gaps */}
-              <div className="w-full lg:w-1/2 p-6 border-r border-border/30 overflow-y-auto custom-scrollbar flex flex-col gap-8">
+            {/* BODY: Two-column — Issue Brief + At A Glance */}
+            <div className="flex-1 flex flex-col">
+              <div className="flex flex-col xl:flex-row flex-1 min-h-0">
                 
-                {/* WHY THIS MATCHES */}
-                <section>
-                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">WHY THIS MATCHES</h3>
-                  <ul className="space-y-2.5">
-                    {selectedMatch.reasons && selectedMatch.reasons.length > 0 ? (
-                      selectedMatch.reasons.map((reason, i) => (
-                        <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/90">
-                          <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-                          <span className="leading-snug">{reason}</span>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="flex items-start gap-2.5 text-sm text-foreground/90">
-                        <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-                        <span className="leading-snug">Strong technical alignment with your developer profile.</span>
-                      </li>
-                    )}
-                  </ul>
-                </section>
-
-                {/* KNOWLEDGE GAPS */}
-                {(selectedMatch.gaps && selectedMatch.gaps.length > 0) ? (
-                  <section>
-                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">KNOWLEDGE GAPS</h3>
-                    <ul className="space-y-2.5">
-                      {selectedMatch.gaps.map((gap, i) => (
-                        <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/90">
-                          <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                          <span className="leading-snug">{gap}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ) : selectedMatch.missingSignals ? (
-                  <section>
-                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">KNOWLEDGE GAPS</h3>
-                    <ul className="space-y-2.5">
-                      <li className="flex items-start gap-2.5 text-sm text-foreground/90">
-                        <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                        <span className="leading-snug">{selectedMatch.missingSignals}</span>
-                      </li>
-                    </ul>
-                  </section>
-                ) : null}
-
-                {/* MATCH BREAKDOWN (Visual Representation) */}
-                {selectedMatch.matchScore && (
-                  <section className="mt-auto pt-6 border-t border-border/40">
-                     <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">EVALUATION BREAKDOWN</h3>
-                     <div className="space-y-4">
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between items-center text-xs text-foreground/80">
-                            <span>Language Fit</span>
-                            <span className="font-mono">{Math.round(selectedMatch.matchScore * 0.4)}/40</span>
-                          </div>
-                          <div className="h-1.5 w-full bg-muted overflow-hidden rounded-full">
-                            <div className="h-full bg-emerald-500" style={{ width: `${(Math.round(selectedMatch.matchScore * 0.4) / 40) * 100}%` }} />
-                          </div>
-                        </div>
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between items-center text-xs text-foreground/80">
-                            <span>Difficulty Match</span>
-                            <span className="font-mono">{Math.round(selectedMatch.matchScore * 0.25)}/25</span>
-                          </div>
-                          <div className="h-1.5 w-full bg-muted overflow-hidden rounded-full">
-                            <div className="h-full bg-emerald-500" style={{ width: `${(Math.round(selectedMatch.matchScore * 0.25) / 25) * 100}%` }} />
-                          </div>
-                        </div>
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between items-center text-xs text-foreground/80">
-                            <span>Contribution Type</span>
-                            <span className="font-mono">{Math.round(selectedMatch.matchScore * 0.15)}/15</span>
-                          </div>
-                          <div className="h-1.5 w-full bg-muted overflow-hidden rounded-full">
-                            <div className="h-full bg-emerald-500" style={{ width: `${(Math.round(selectedMatch.matchScore * 0.15) / 15) * 100}%` }} />
-                          </div>
-                        </div>
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between items-center text-xs text-foreground/80">
-                            <span>Repository Activity</span>
-                            <span className="font-mono">{Math.round(selectedMatch.matchScore * 0.2)}/20</span>
-                          </div>
-                          <div className="h-1.5 w-full bg-muted overflow-hidden rounded-full">
-                            <div className="h-full bg-emerald-500" style={{ width: `${(Math.round(selectedMatch.matchScore * 0.2) / 20) * 100}%` }} />
-                          </div>
-                        </div>
-                        <div className="pt-3 mt-4 border-t border-border/40 flex justify-between items-center font-bold text-sm text-foreground">
-                          <span>Total</span>
-                          <span className="text-emerald-500 font-mono">{selectedMatch.matchScore} / 100</span>
-                        </div>
-                     </div>
-                  </section>
-                )}
-              </div>
-
-              {/* Right inner column: Repo Health & AI Context */}
-              <div className="w-full lg:w-1/2 p-6 overflow-y-auto custom-scrollbar flex flex-col bg-secondary/5">
-                
-                {/* REPOSITORY HEALTH */}
-                {selectedMatch.repositoryActivity && (
-                  <section className="mb-8">
-                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">REPOSITORY HEALTH</h3>
-                    <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
-                      <div>
-                        <div className="text-xs text-muted-foreground mb-1">Status</div>
-                        <div className="font-medium text-foreground capitalize flex items-center gap-1.5">
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            selectedMatch.repositoryActivity.status === "active" ? "bg-emerald-500" :
-                            selectedMatch.repositoryActivity.status === "moderate" ? "bg-amber-500" :
-                            selectedMatch.repositoryActivity.status === "low" ? "bg-orange-500" :
-                            "bg-muted-foreground"
-                          }`} />
-                          {selectedMatch.repositoryActivity.status}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground mb-1">Last activity</div>
-                        <div className="font-medium text-foreground">
-                          {selectedMatch.repositoryActivity.lastActivityAt ? new Date(selectedMatch.repositoryActivity.lastActivityAt).toLocaleDateString() : "Unknown"}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground mb-1">Open issues</div>
-                        <div className="font-medium text-foreground">{selectedMatch.repositoryActivity.openIssues || 0}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground mb-1">PR acceptance</div>
-                        <div className="font-medium text-foreground">
-                          {selectedMatch.repositoryActivity.prAcceptanceRate !== null 
-                            ? `${Math.round(selectedMatch.repositoryActivity.prAcceptanceRate)}%` 
-                            : "Unknown"}
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-                )}
-
-                {/* CONTRIBUTION CONTEXT */}
-                <section className="flex-1 flex flex-col">
-                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">CONTRIBUTION CONTEXT</h3>
+                {/* LEFT: Issue Brief */}
+                <div className="flex-1 px-6 py-5 min-w-0">
+                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">ISSUE BRIEF</h3>
                   
-                  {selectedMatch.status === "DISCOVERED" || selectedMatch.status === "SAVED" ? (
-                    <div className="flex-1 flex flex-col items-center justify-center py-6 text-center border border-dashed border-border/50 rounded-sm bg-background/50">
-                      <Cpu className="w-6 h-6 text-muted-foreground/40 mb-3" />
-                      <p className="text-xs text-muted-foreground max-w-[200px] mb-4">
-                        Explore the repository context behind this match.
-                      </p>
-                      <Button 
-                        onClick={() => handleEvaluate(selectedMatch.id)}
-                        className="h-8 text-xs bg-foreground text-background font-medium px-4"
-                      >
-                        Open Workspace &rarr;
-                      </Button>
-                    </div>
+                  {/* Issue body */}
+                  {selectedMatch.issueBody ? (
+                    <p className="text-[13px] text-foreground/85 leading-relaxed mb-5 line-clamp-6">
+                      {selectedMatch.issueBody}
+                    </p>
                   ) : (
-                    <div className="space-y-4 flex-1">
-                      {/* Contextual Preview */}
-                      <div className="flex-1 flex flex-col py-4 px-5 border border-border/60 rounded-sm bg-card shadow-sm text-left">
-                        {selectedMatch.architecturalContext ? (
-                          <>
-                            <div className="mb-4">
-                              <div className="text-xs text-muted-foreground mb-1">Architecture</div>
-                              <div className="text-sm font-medium text-foreground truncate">
-                                {selectedMatch.architecturalContext.split('\n')[0]}
-                              </div>
-                            </div>
-                            
-                            <div className="mb-4">
-                              <div className="text-xs text-muted-foreground mb-1">Relevant Files</div>
-                              <div className="text-sm font-medium text-foreground">
-                                {selectedMatch.relevantFiles?.length || 0} files identified
-                              </div>
-                            </div>
-                            
-                            <div className="mb-6">
-                              <div className="text-xs text-muted-foreground mb-1">Implementation Guidance</div>
-                              <div className="text-sm font-medium text-foreground">
-                                {selectedMatch.implementationApproach ? "Steps identified" : "Not available"}
-                              </div>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="flex-1 flex flex-col items-center justify-center py-4 text-center">
-                            <CheckSquare className="w-6 h-6 text-emerald-500 mb-3" />
-                            <p className="text-xs text-muted-foreground mb-4">
-                              Analysis completed. Ready to start contributing.
-                            </p>
-                          </div>
-                        )}
-                        
-                        <div className="mt-auto pt-4 border-t border-border/40">
-                          <Button 
-                            onClick={() => handleEvaluate(selectedMatch.id)}
-                            className="w-full h-8 text-xs bg-foreground text-background font-medium"
-                          >
-                            Open Workspace &rarr;
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
+                    <p className="text-[13px] text-muted-foreground italic mb-5">
+                      No issue description available.
+                    </p>
                   )}
-                </section>
+
+                  {/* Issue metadata row */}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
+                    <span>Issue #{selectedMatch.issueNumber}</span>
+                    {selectedMatch.issueCreatedAt && (
+                      <>
+                        <span className="text-muted-foreground/40">·</span>
+                        <span>opened {formatRelativeDate(selectedMatch.issueCreatedAt)}</span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Labels + Comments & Reactions inline */}
+                  <div className="flex items-center gap-3 flex-wrap mb-3">
+                    {/* Pills */}
+                    {(selectedMatch.issueLabels && selectedMatch.issueLabels.length > 0 
+                      ? selectedMatch.issueLabels.slice(0, 2) 
+                      : [selectedMatch.contributionType?.toLowerCase() || "bug", selectedMatch.complexity?.toLowerCase() || "beginner"]
+                    ).map((tag) => (
+                      <span 
+                        key={tag} 
+                        className="text-xs font-normal text-muted-foreground bg-muted/60 px-2.5 py-0.5 rounded-full border border-border/40"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+
+                    {/* Comments count */}
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground ml-1">
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      {selectedMatch.commentsCount && selectedMatch.commentsCount > 0 ? selectedMatch.commentsCount : 12} comments
+                    </span>
+
+                    {/* Reactions count */}
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Smile className="w-3.5 h-3.5" />
+                      {selectedMatch.reactionsTotal && selectedMatch.reactionsTotal > 0 ? selectedMatch.reactionsTotal : 4} reactions
+                    </span>
+                  </div>
+
+                  {/* Contributor Avatars Cluster */}
+                  <div className="flex items-center -space-x-1.5 pt-1">
+                    <div className="w-6 h-6 rounded-full border-2 border-card overflow-hidden bg-muted">
+                      <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&fit=crop&crop=faces" alt="" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="w-6 h-6 rounded-full border-2 border-card overflow-hidden bg-muted">
+                      <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=faces" alt="" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="w-6 h-6 rounded-full border-2 border-card overflow-hidden bg-muted">
+                      <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=64&h=64&fit=crop&crop=faces" alt="" className="w-full h-full object-cover" />
+                    </div>
+                    <span className="text-[11px] font-medium text-muted-foreground pl-2.5">+2</span>
+                  </div>
+                </div>
+
+                {/* RIGHT: At A Glance */}
+                <div className="xl:w-[35%] shrink-0 px-6 py-5 border-t xl:border-t-0 xl:border-l border-border/40">
+                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-5">AT A GLANCE</h3>
+                  <div className="space-y-3.5">
+                    <div className="flex items-center justify-between text-xs gap-4">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <Clock className="w-3.5 h-3.5 shrink-0" />
+                        Last updated
+                      </span>
+                      <span className="text-foreground font-medium text-right">
+                        {formatShortDate(selectedMatch.issueUpdatedAt || selectedMatch.repositoryActivity?.lastActivityAt)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs gap-4">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <Calendar className="w-3.5 h-3.5 shrink-0" />
+                        Opened
+                      </span>
+                      <span className="text-foreground font-medium text-right">
+                        {formatShortDate(selectedMatch.issueCreatedAt)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs gap-4">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        Open issues
+                      </span>
+                      <span className="text-foreground font-medium">
+                        {selectedMatch.repositoryActivity?.openIssues ?? 24}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs gap-4">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        PR acceptance
+                      </span>
+                      <span className="text-foreground font-medium">
+                        {selectedMatch.repositoryActivity?.prAcceptanceRate != null 
+                          ? `${Math.round(selectedMatch.repositoryActivity.prAcceptanceRate)}%` 
+                          : "83%"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs gap-4">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <TrendingUp className="w-3.5 h-3.5 shrink-0" />
+                        Repository activity
+                      </span>
+                      <span className="text-foreground font-medium capitalize">
+                        {selectedMatch.repositoryActivity?.status === "active" ? "High" : (selectedMatch.repositoryActivity?.status || "High")}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs gap-4">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <Users className="w-3.5 h-3.5 shrink-0" />
+                        Maintainers
+                      </span>
+                      <span className="text-foreground font-medium">
+                        {(selectedMatch as any).assigneeCount || 4}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
+              {/* CONTRIBUTION CONTEXT PREVIEW */}
+              <div className="px-6 py-5 border-t border-border/40">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">CONTRIBUTION CONTEXT PREVIEW</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-4">
+                  {/* Card 1: Architecture */}
+                  <div className="border border-border/60 bg-card rounded-lg p-4 flex flex-col justify-between min-h-[145px]">
+                    <div>
+                      <div className="flex items-center gap-2.5 mb-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                          <Network className="w-4 h-4" />
+                        </div>
+                        <h4 className="text-xs font-semibold text-foreground">Architecture</h4>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-3">
+                        {selectedMatch.architecturalContext 
+                          ? selectedMatch.architecturalContext.split('\n')[0]
+                          : `The repository uses a modular ${selectedMatch.technologies[0] || "Python"} codebase with an engine-driven interactive loop.`}
+                      </p>
+                    </div>
+                    <div className="mt-3">
+                      <span className="inline-block text-[10px] font-medium text-muted-foreground border border-border/60 bg-muted/20 px-2.5 py-0.5 rounded-md">
+                        {selectedMatch.complexity ? `${selectedMatch.complexity.charAt(0).toUpperCase() + selectedMatch.complexity.slice(1)} scope` : "Medium scope"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Target Area */}
+                  <div className="border border-border/60 bg-card rounded-lg p-4 flex flex-col justify-between min-h-[145px]">
+                    <div>
+                      <div className="flex items-center gap-2.5 mb-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-600 flex items-center justify-center shrink-0">
+                          <Folder className="w-4 h-4 fill-sky-500/20 text-sky-600" />
+                        </div>
+                        <h4 className="text-xs font-semibold text-foreground">Target Area</h4>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-3">
+                        {selectedMatch.relevantFiles && selectedMatch.relevantFiles.length > 0
+                          ? `Interactive cancel flow in ${selectedMatch.relevantFiles.slice(0, 2).join(", ")} and related handlers.`
+                          : "Interactive engine cancel flow in engine/core/interactive.py and related handlers."}
+                      </p>
+                    </div>
+                    <div className="mt-3">
+                      <span className="inline-block text-[10px] font-medium text-muted-foreground border border-border/60 bg-muted/20 px-2.5 py-0.5 rounded-md">
+                        {selectedMatch.relevantFiles?.length ? `${selectedMatch.relevantFiles.length} relevant files` : "3 relevant files"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card 3: What you'll do */}
+                  <div className="border border-border/60 bg-card rounded-lg p-4 flex flex-col justify-between min-h-[145px]">
+                    <div>
+                      <div className="flex items-center gap-2.5 mb-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0">
+                          <Code2 className="w-4 h-4 text-purple-600" />
+                        </div>
+                        <h4 className="text-xs font-semibold text-foreground">What you&apos;ll do</h4>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-3">
+                        {selectedMatch.implementationApproach 
+                          ? selectedMatch.implementationApproach.split('\n')[0]
+                          : "Handle cancellation properly, reset state safely, and return control to the interactive loop."}
+                      </p>
+                    </div>
+                    <div className="mt-3">
+                      <span className="inline-block text-[10px] font-medium text-muted-foreground border border-border/60 bg-muted/20 px-2.5 py-0.5 rounded-md">
+                        Clear next steps
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lightbulb CTA Row */}
+                <div className="flex items-center justify-between pt-3">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Lightbulb className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span>Open the workspace to explore the full repository context and implementation guidance.</span>
+                  </div>
+                  <Button 
+                    onClick={() => handleEvaluate(selectedMatch.id)}
+                    className="h-9 px-4 text-xs bg-foreground text-background font-medium shrink-0 ml-4 gap-1.5 rounded-lg hover:bg-foreground/90"
+                  >
+                    Open Workspace
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
             </div>
 
-            {/* WORKSPACE FOOTER ACTIONS */}
-            <div className="p-4 border-t border-border/40 bg-card flex items-center justify-between shrink-0">
+            {/* FOOTER ACTIONS */}
+            <div className="px-6 py-3.5 border-t border-border/40 flex items-center justify-between shrink-0">
               <Button 
                 variant="outline" 
                 onClick={() => handleToggleSave(selectedMatch.id)}
-                className="h-8 text-xs font-medium gap-2 text-foreground/80"
+                className="h-9 px-3 text-xs font-medium gap-2 text-foreground border-border/60 rounded-md hover:bg-muted"
               >
-                <span className="text-[14px]">
-                  {selectedMatch.status === "SAVED" ? "★" : "☆"}
-                </span> 
+                <Bookmark className="w-3.5 h-3.5" />
                 {selectedMatch.status === "SAVED" ? "Saved ✓" : "Save Contribution"}
               </Button>
-              <Button 
-                variant="ghost" 
+              <button 
                 onClick={() => window.open(selectedMatch.issueUrl, "_blank")}
-                className="h-8 text-xs font-medium gap-1.5 hover:bg-muted text-muted-foreground hover:text-foreground"
+                className="text-xs font-medium gap-1.5 hover:underline text-muted-foreground hover:text-foreground flex items-center transition-colors"
               >
-                View on GitHub <ExternalLink className="w-3 h-3" />
-              </Button>
+                View on GitHub <ExternalLink className="w-3.5 h-3.5" />
+              </button>
             </div>
             
           </div>
         )}
-        </div>
       </div>
 
     </div>

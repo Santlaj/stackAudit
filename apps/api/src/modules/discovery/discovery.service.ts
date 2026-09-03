@@ -71,7 +71,8 @@ export class DiscoveryService {
     }
 
     // ─── Find & Score candidates ───
-    const matchesFound = [];
+    const matchesFound: any[] = [];
+    let topMatches: any[] = [];
 
     try {
       const candidates = await matchingService.findCandidates(profile, languages, frameworks, difficulty);
@@ -97,7 +98,7 @@ export class DiscoveryService {
       }
       
       matchesFound.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
-      const topMatches = matchesFound.slice(0, 30);
+      topMatches = matchesFound.slice(0, 30);
 
       // ─── Upsert matches (prevents duplicates) ───
       await prisma.$transaction(async (tx) => {
@@ -141,7 +142,16 @@ export class DiscoveryService {
       throw new AppError("Failed to discover issues", 500, "DISCOVERY_FAILED");
     }
 
-    const matches = await this.getMatches(userId);
+    // Return EXACTLY the matches that were just processed for the current filter
+    const issueIds = topMatches.map((m: any) => m.githubIssueId).filter(Boolean) as string[];
+    const matches = await prisma.issue_match.findMany({
+      where: {
+        userId,
+        githubIssueId: { in: issueIds }
+      },
+      orderBy: { matchScore: 'desc' }
+    });
+
     return { matches, partialCoverage };
   }
 
@@ -267,9 +277,40 @@ Extract context and provide the deeper semantic evaluation based on the above co
     return prisma.issue_match.findMany({
       where: {
         userId,
-        status: "SAVED"
+        status: { in: ["SAVED", "ANALYZED", "STARTED"] }
       },
       orderBy: { updatedAt: "desc" },
+      include: { githubIssue: true }
+    });
+  }
+
+  async updateMatchStatus(issueMatchId: string, userId: string, newStatus: string) {
+    const match = await prisma.issue_match.findUnique({
+      where: { id: issueMatchId }
+    });
+    
+    if (!match) throw new AppError("Match not found", 404, "MATCH_NOT_FOUND");
+    if (match.userId !== userId) throw new AppError("Unauthorized", 403, "UNAUTHORIZED");
+
+    const validTransitions: Record<string, string[]> = {
+      "DISCOVERED": ["EXPLORED", "VIEWED", "SAVED"],
+      "EXPLORED": ["SAVED", "STARTED"],
+      "VIEWED": ["SAVED", "STARTED"],
+      "SAVED": ["DISCOVERED", "ANALYZED", "STARTED"],
+      "ANALYZED": ["STARTED", "SAVED"],
+      "STARTED": ["SAVED", "PR_SUBMITTED"], // Can unsave to drop it
+      "PR_SUBMITTED": ["MERGED"],
+      "MERGED": []
+    };
+
+    const allowed = validTransitions[match.status] || [];
+    if (!allowed.includes(newStatus)) {
+      throw new AppError(`Invalid state transition from ${match.status} to ${newStatus}`, 400, "INVALID_TRANSITION");
+    }
+
+    return prisma.issue_match.update({
+      where: { id: issueMatchId },
+      data: { status: newStatus },
       include: { githubIssue: true }
     });
   }

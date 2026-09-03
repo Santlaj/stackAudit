@@ -33,14 +33,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 import { discoveryRoutes } from "./modules/discovery/index.js";
+import { analysisRoutes } from "./modules/analysis/analysis.routes.js";
 
 // Feature modules
 app.use("/api/health", healthRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api/github", githubRoutes);
-
 app.use("/api/discovery", discoveryRoutes);
+app.use("/api/analysis", analysisRoutes);
 
 // Error handling (must be last)
 app.use(notFoundHandler);

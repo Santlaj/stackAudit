@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { Layout, Compass, Bookmark, Activity, Settings, User, Menu } from "lucide-react"
+import { Compass, Bookmark, Activity, Settings, User, Menu } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -54,7 +54,6 @@ export function Sidebar({ className, ...props }: SidebarProps) {
       
       <div className="flex-1 overflow-auto py-3 custom-scrollbar">
         <nav className="space-y-0.5 px-2">
-          <SidebarItem href="/" icon={<Layout className="h-4 w-4" />} label="Home" active={pathname === "/"} isCollapsed={isCollapsed} />
           <SidebarItem href="/discover" icon={<Compass className="h-4 w-4" />} label="Discover" active={pathname === "/discover"} isCollapsed={isCollapsed} />
           <SidebarItem href="/saved" icon={<Bookmark className="h-4 w-4" />} label="Saved" active={pathname === "/saved"} isCollapsed={isCollapsed} />
           <SidebarItem href="/activity" icon={<Activity className="h-4 w-4" />} label="Activity" active={pathname === "/activity"} isCollapsed={isCollapsed} />

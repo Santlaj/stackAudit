@@ -36,6 +36,13 @@ export interface IssueMatch {
   architecturalContext?: string;
   relevantFiles?: string[];
   implementationApproach?: string;
+  // Issue detail fields
+  issueBody?: string | null;
+  issueCreatedAt?: string | null;
+  issueUpdatedAt?: string | null;
+  issueLabels?: string[];
+  commentsCount?: number;
+  reactionsTotal?: number;
   repositoryActivity?: {
     status: string;
     lastActivityAt: string | null;
