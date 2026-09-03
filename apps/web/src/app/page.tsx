@@ -24,7 +24,16 @@ export default function HomePage() {
   const { data: session, isPending } = useSession();
   const router = useRouter();
 
-  // No forced redirect, allow logged-in users to see the homepage if they click Home.
+  // Redirect logged-in users to the app — the marketing page is for signups.
+  React.useEffect(() => {
+    if (!isPending && session) {
+      router.push("/discover");
+    }
+  }, [session, isPending, router]);
+
+  if (session) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-foreground selection:text-background overflow-x-hidden">
@@ -47,20 +56,12 @@ export default function HomePage() {
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          {session ? (
-            <Button size="sm" className="h-8 text-xs bg-foreground text-background font-medium" onClick={() => router.push("/discover")}>
-              Go to App <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-            </Button>
-          ) : (
-            <>
-              <Button variant="ghost" size="sm" className="text-xs font-medium" onClick={() => router.push("/login")}>
-                Sign In
-              </Button>
-              <Button size="sm" className="h-8 text-xs bg-foreground text-background font-medium" onClick={() => router.push("/login")}>
-                Get Started
-              </Button>
-            </>
-          )}
+          <Button variant="ghost" size="sm" className="text-xs font-medium" onClick={() => router.push("/login")}>
+            Sign In
+          </Button>
+          <Button size="sm" className="h-8 text-xs bg-foreground text-background font-medium" onClick={() => router.push("/login")}>
+            Get Started
+          </Button>
         </div>
       </header>
 
@@ -183,35 +184,35 @@ export default function HomePage() {
             <div className="flex items-center gap-2 self-start sm:self-auto">
               <div className="text-right">
                 <div className="text-[10px] font-mono text-muted-foreground uppercase">Compatibility</div>
-                <div className="text-base font-bold font-mono text-emerald-400">88%</div>
+                <div className="text-base font-bold font-mono text-emerald-500">88%</div>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
             <div className="border border-border/60 bg-card/40 rounded p-3 space-y-2">
-              <div className="text-[10px] font-mono font-semibold text-emerald-400 uppercase flex items-center gap-1.5">
+              <div className="text-[10px] font-mono font-semibold text-emerald-500 uppercase flex items-center gap-1.5">
                 <Check className="w-3 h-3" /> Match Reasons
               </div>
-              <ul className="text-xs space-y-1.5 text-zinc-300">
+              <ul className="text-xs space-y-1.5 text-foreground/80">
                 <li className="flex items-start gap-1.5">
-                  <span className="text-emerald-400 font-mono text-[10px]">•</span>
+                  <span className="text-emerald-500 font-mono text-[10px]">•</span>
                   <span>Primary language (TypeScript) matches your stack.</span>
                 </li>
                 <li className="flex items-start gap-1.5">
-                  <span className="text-emerald-400 font-mono text-[10px]">•</span>
+                  <span className="text-emerald-500 font-mono text-[10px]">•</span>
                   <span>Difficulty (Intermediate) fits preferred complexity.</span>
                 </li>
               </ul>
             </div>
 
             <div className="border border-border/60 bg-card/40 rounded p-3 space-y-2">
-              <div className="text-[10px] font-mono font-semibold text-zinc-400 uppercase flex items-center gap-1.5">
+              <div className="text-[10px] font-mono font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
                 <AlertCircle className="w-3 h-3" /> Technical Gaps
               </div>
-              <ul className="text-xs space-y-1.5 text-zinc-400">
+              <ul className="text-xs space-y-1.5 text-muted-foreground">
                 <li className="flex items-start gap-1.5">
-                  <span className="text-zinc-500 font-mono text-[10px]">•</span>
+                  <span className="text-muted-foreground/60 font-mono text-[10px]">•</span>
                   <span>Involves internal router transformer types.</span>
                 </li>
               </ul>

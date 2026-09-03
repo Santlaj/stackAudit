@@ -18,7 +18,7 @@ export default function SavedPage() {
     if (!session?.user?.id) return;
     setLoading(true);
     try {
-      const data = await getSavedMatches(session.user.id);
+      const data = await getSavedMatches();
       setMatches(data || []);
     } catch (err) {
       console.error(err);
@@ -35,7 +35,7 @@ export default function SavedPage() {
     try {
       // Optimistically remove
       setMatches(prev => prev.filter(m => m.id !== matchId));
-      await toggleSaveMatch(matchId, session?.user?.id);
+      await toggleSaveMatch(matchId);
     } catch (err) {
       console.error(err);
       fetchMatches(); // Revert on failure

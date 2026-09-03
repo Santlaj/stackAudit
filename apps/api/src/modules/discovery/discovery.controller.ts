@@ -24,6 +24,13 @@ function formatMatchDto(match: any) {
     relevantFiles: match.relevantFiles,
     implementationApproach: match.implementationApproach,
     status: match.status,
+    // Issue detail fields from the linked github_issue
+    issueBody: match.githubIssue?.body ?? null,
+    issueCreatedAt: match.githubIssue?.issueCreatedAt ?? null,
+    issueUpdatedAt: match.githubIssue?.issueUpdatedAt ?? null,
+    issueLabels: match.githubIssue?.labels ?? [],
+    commentsCount: match.githubIssue?.commentsCount ?? 0,
+    reactionsTotal: match.githubIssue?.reactionsTotal ?? 0,
     repositoryActivity: match.githubIssue ? {
       status: match.githubIssue.repoActivityLevel || "unknown",
       lastActivityAt: match.githubIssue.repoLastUpdatedAt || match.githubIssue.repoLastPushedAt || null,
@@ -48,8 +55,8 @@ export class DiscoveryController {
 
   async toggleSaveMatch(req: Request, res: Response, next: NextFunction) {
     try {
-      const { matchId } = req.params;
-      const { userId } = req.body; // In a real app, this comes from auth middleware
+      const { matchId } = req.params as { matchId: string };
+      const userId = req.user!.id;
       const updatedMatch = await discoveryService.toggleSaveMatch(matchId, userId);
       successResponse(res, formatMatchDto(updatedMatch), "Match save status toggled", 200);
     } catch (error) {
@@ -59,9 +66,26 @@ export class DiscoveryController {
 
   async getSavedMatches(req: Request, res: Response, next: NextFunction) {
     try {
-      const { userId } = req.params;
-      const matches = await discoveryService.getSavedMatches(userId as string);
+      const userId = req.user!.id;
+      const matches = await discoveryService.getSavedMatches(userId);
       successResponse(res, { matches: matches.map(formatMatchDto) }, "Saved matches retrieved", 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateMatchStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { matchId } = req.params as { matchId: string };
+      const { status } = req.body;
+      const userId = req.user!.id;
+      
+      if (!status) {
+        return res.status(400).json({ success: false, message: "Status is required" });
+      }
+
+      const updatedMatch = await discoveryService.updateMatchStatus(matchId, userId, status);
+      successResponse(res, formatMatchDto(updatedMatch), "Match status updated", 200);
     } catch (error) {
       next(error);
     }
@@ -95,9 +119,25 @@ export class DiscoveryController {
     }
   }
 
+  async getMatch(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { matchId } = req.params as { matchId: string };
+      const match = await prisma.issue_match.findUnique({
+        where: { id: matchId },
+        include: { githubIssue: true }
+      });
+      if (!match) {
+        return res.status(404).json({ success: false, message: "Match not found" });
+      }
+      successResponse(res, formatMatchDto(match), "Match retrieved", 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async evaluateMatch(req: Request, res: Response, next: NextFunction) {
     try {
-      const { matchId } = req.params;
+      const { matchId } = req.params as { matchId: string };
       const account = await prisma.account.findFirst({ where: { userId: req.user!.id, providerId: "github" } });
       const githubToken = account?.accessToken || "";
       const match = await discoveryService.evaluateMatchContext(matchId as string, githubToken);

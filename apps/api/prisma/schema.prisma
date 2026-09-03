@@ -153,16 +153,41 @@ model issue_match {
   reasons         String[] // Deterministic reasons (e.g. "TypeScript matches your experience")
   gaps            String[] // Deterministic gaps (e.g. "Low PR acceptance rate")
   
-  status          String   @default("DISCOVERED") // DISCOVERED, VIEWED, SAVED, DISMISSED
+  // DISCOVERED, EXPLORED, SAVED, ANALYZED, STARTED, PR_SUBMITTED, MERGED
+  status          String   @default("DISCOVERED")
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  // -- Analysis Lifecycle --
+  analysis        repository_analysis?
 
   @@unique([userId, githubIssueId])
   @@index([userId])
   @@index([repository])
   @@index([githubIssueId])
   @@map("issue_matches")
+}
+
+model repository_analysis {
+  id              String   @id @default(uuid())
+  matchId         String   @unique
+  match           issue_match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  
+  status          String   @default("NOT_STARTED") 
+  // NOT_STARTED, QUEUED, REPOSITORY_LOADING, REPOSITORY_LOADED, GRAPH_BUILDING, 
+  // ARCHITECTURE_ANALYZED, RELEVANT_FILES_IDENTIFIED, CONTEXT_SYNTHESIZED, COMPLETED, FAILED
+
+  commitSha       String?  // The specific commit this analysis ran against
+  
+  context         Json?    // Factual context from Graphify + synthesis from Groq
+  error           String?  // Error message if status is FAILED
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  completedAt     DateTime?
+
+  @@map("repository_analyses")
 }
 
 // ─── GitHub Issue Data ──────────────────────────────

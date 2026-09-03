@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StackAudit — Open-Source Contribution Intelligence",
+  title: "StackAudit - Open-Source Contribution Intelligence",
   description:
     "Discover open-source issues matched to your developer profile and get actionable code context to start contributing.",
 };

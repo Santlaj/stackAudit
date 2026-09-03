@@ -178,7 +178,7 @@ export class GithubService {
         query += ` language:${languages[0]}`; 
       }
 
-      const { data } = await client.search.issuesAndPullRequests({
+      const { data } = await client.request("GET /search/issues", {
         q: query,
         sort: "updated",
         order: "desc",
@@ -392,7 +392,7 @@ export class GithubService {
           query += ` language:${language}`;
         }
 
-        const { data } = await client.search.issuesAndPullRequests({
+        const { data } = await client.request("GET /search/issues", {
           q: query,
           sort: "updated",
           order: "desc",
@@ -480,7 +480,7 @@ export class GithubService {
       
       const [repoRes, prRes, langRes, topicsRes] = await Promise.allSettled([
         client.repos.get({ owner, repo }),
-        client.search.issuesAndPullRequests({
+        client.request("GET /search/issues", {
           q: `repo:${owner}/${repo} is:pr is:closed`,
           per_page: 30, // Sample the last 30 closed PRs
         }),

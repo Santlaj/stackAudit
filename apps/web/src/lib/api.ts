@@ -36,6 +36,13 @@ export interface IssueMatch {
   architecturalContext?: string;
   relevantFiles?: string[];
   implementationApproach?: string;
+  // Issue detail fields
+  issueBody?: string | null;
+  issueCreatedAt?: string | null;
+  issueUpdatedAt?: string | null;
+  issueLabels?: string[];
+  commentsCount?: number;
+  reactionsTotal?: number;
   repositoryActivity?: {
     status: string;
     lastActivityAt: string | null;
@@ -117,23 +124,52 @@ export async function evaluateMatch(matchId: string): Promise<IssueMatch> {
   return json.data;
 }
 
-export async function toggleSaveMatch(matchId: string, userId?: string): Promise<IssueMatch> {
+export async function getMatch(matchId: string): Promise<IssueMatch> {
+  const res = await fetch(`${API_BASE}/api/discovery/match/${matchId}`, {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Failed to fetch match");
+  const json = await res.json();
+  return json.data;
+}
+
+export async function toggleSaveMatch(matchId: string): Promise<IssueMatch> {
   const res = await fetch(`${API_BASE}/api/discovery/save/${matchId}`, {
     method: "PATCH",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId }), // Usually server infers this from auth middleware
   });
   if (!res.ok) throw new Error("Failed to toggle save match");
   const json = await res.json();
   return json.data;
 }
 
-export async function getSavedMatches(userId: string): Promise<IssueMatch[]> {
-  const res = await fetch(`${API_BASE}/api/discovery/saved/${userId}`, {
+export async function getSavedMatches(): Promise<IssueMatch[]> {
+  const res = await fetch(`${API_BASE}/api/discovery/saved`, {
     credentials: "include",
   });
   if (!res.ok) throw new Error("Failed to fetch saved matches");
   const json = await res.json();
   return json.data.matches;
+}
+
+export async function updateMatchStatus(matchId: string, status: string): Promise<IssueMatch> {
+  const res = await fetch(`${API_BASE}/api/discovery/matches/${matchId}/status`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status })
+  });
+  if (!res.ok) throw new Error("Failed to update match status");
+  const json = await res.json();
+  return json.data;
+}
+
+export async function startAnalysis(matchId: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/api/analysis/${matchId}/start`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Failed to start analysis");
+  const json = await res.json();
+  return json.data;
 }
