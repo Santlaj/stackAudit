@@ -4,6 +4,7 @@ services:
     name: stackaudit-api
     env: node
     buildCommand: pnpm --filter api build
+    preDeployCommand: pnpm --filter api exec prisma migrate deploy
     startCommand: pnpm --filter api start
     envVars:
       - key: NODE_ENV
