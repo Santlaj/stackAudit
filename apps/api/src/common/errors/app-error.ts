@@ -70,3 +70,17 @@ export class InternalError extends AppError {
     super(message, 500, errorCode, false);
   }
 }
+
+// 429 / 403 — GitHub API rate limit exceeded.
+export class GithubRateLimitError extends AppError {
+  public readonly resetAt: number; // Timestamp in milliseconds
+
+  constructor(
+    resetAt: number,
+    message = "GitHub API rate limit exceeded",
+    errorCode = "GITHUB_RATE_LIMIT",
+  ) {
+    super(message, 429, errorCode);
+    this.resetAt = resetAt;
+  }
+}

@@ -24,7 +24,10 @@ function formatMatchDto(match: any) {
     relevantFiles: match.relevantFiles,
     implementationApproach: match.implementationApproach,
     status: match.status,
+    createdAt: match.createdAt,
+    updatedAt: match.updatedAt,
     // Issue detail fields from the linked github_issue
+    issueState: match.githubIssue?.state ?? null,
     issueBody: match.githubIssue?.body ?? null,
     issueCreatedAt: match.githubIssue?.issueCreatedAt ?? null,
     issueUpdatedAt: match.githubIssue?.issueUpdatedAt ?? null,

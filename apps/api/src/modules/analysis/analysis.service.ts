@@ -4,6 +4,7 @@ import { logger } from "../../utils/logger.js";
 import { repositoryFetcherService } from "./repository-fetcher.service.js";
 import { graphifyService } from "./graphify.service.js";
 import { groqSynthesisService } from "./groq.service.js";
+import { discoveryService } from "../discovery/discovery.service.js";
 
 export class AnalysisService {
   /**
@@ -32,12 +33,23 @@ export class AnalysisService {
 
     let analysis = match.analysis;
     if (!analysis) {
-      analysis = await prisma.repository_analysis.create({
-        data: {
-          matchId,
-          status: "QUEUED"
+      try {
+        analysis = await prisma.repository_analysis.create({
+          data: {
+            matchId,
+            status: "QUEUED"
+          }
+        });
+      } catch (error: any) {
+        // P2002: Unique constraint failed
+        if (error.code === 'P2002') {
+          // A concurrent request (like React StrictMode double-fire) already created it.
+          // Fetch the existing analysis and return it without spawning a duplicate pipeline.
+          analysis = await prisma.repository_analysis.findUnique({ where: { matchId } });
+          return analysis!;
         }
-      });
+        throw error;
+      }
     } else {
       analysis = await prisma.repository_analysis.update({
         where: { id: analysis.id },
@@ -123,8 +135,50 @@ export class AnalysisService {
         groqContext = {
           whyFilesMatter: "We were unable to generate AI insights for these files at this time, but they have been identified as relevant by structural analysis.",
           whatToUnderstandFirst: "Review the identified relevant files and the issue description.",
-          implementationApproach: "1. Reproduce the issue locally\\n2. Trace the behavior through the relevant files\\n3. Identify the required change\\n4. Implement and test your fix",
-          knowledgeGaps: []
+          implementationApproach: "1. Understand: Grasp the issue report and expected behavior\n2. Trace: Locate relevant code in repository\n3. Identify: Compare input against code expectations\n4. Plan: Formulate smallest safe change\n5. Validate: Run verification tests and prepare PR",
+          knowledgeGaps: [],
+          guideSteps: {
+            understand: {
+              title: "Understand the issue",
+              guidance: "Review the issue description and system behavior to understand the reported problem.",
+              goal: "Understand the problem and user-visible behavior before inspecting the implementation.",
+              investigationQuestion: "What specific behavior is failing or requested in the issue report?"
+            },
+            trace: {
+              title: "Trace the behavior",
+              guidance: "Locate where the relevant behavior is handled in the codebase.",
+              goal: "Follow the call chain through identified source files to pinpoint where the logic branches.",
+              investigationQuestion: "Which function or module handles this behavior according to the repository structure?",
+              evidence: []
+            },
+            identify: {
+              title: "Identify the failure",
+              guidance: "Compare actual inputs with code assumptions to isolate the defect.",
+              goal: "Isolate the exact condition or incorrect assumption causing the issue.",
+              investigationQuestion: "What assumption does the current code make that fails on the reported case?",
+              evidence: []
+            },
+            plan: {
+              title: "Plan the change",
+              guidance: "Design the smallest safe change and determine required tests.",
+              goal: "Formulate a minimal, backwards-compatible change without breaking existing behavior.",
+              investigationQuestions: [
+                "What is the smallest behavior that needs to change?",
+                "What existing behavior must remain unchanged?"
+              ]
+            },
+            validate: {
+              title: "Validate your contribution",
+              guidance: "Run the project tests and prepare a clear Pull Request description.",
+              goal: "Prove your contribution works and passes repository verification checks.",
+              commands: [],
+              doneCriteria: [
+                "The affected case behaves correctly",
+                "Existing tests pass without regressions",
+                "PR description explains the problem, investigation, change, and validation"
+              ]
+            }
+          }
         };
         await this.updateStatus(analysisId, "CONTEXT_SYNTHESIZED", { error: "AI synthesis unavailable. Showing structural context only." });
       }
@@ -137,6 +191,13 @@ export class AnalysisService {
           synthesis: groqContext
         }
       });
+
+      // Trusted internal path: establish ANALYZED status without exposing it to client-facing endpoints
+      try {
+        await discoveryService.establishAnalyzedStatus(match.id);
+      } catch (err: any) {
+        logger.warn(`Failed to update issue_match status to ANALYZED for match ${match.id}`, { error: err.message });
+      }
 
     } catch (error: any) {
       logger.error(`Analysis failed for ${analysisId}`, { error: error.message });

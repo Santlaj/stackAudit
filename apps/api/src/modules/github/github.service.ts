@@ -1,5 +1,5 @@
 import { createGithubClient } from "../../infrastructure/github/index.js";
-import { AppError, InternalError } from "../../common/errors/index.js";
+import { AppError, InternalError, GithubRateLimitError } from "../../common/errors/index.js";
 import { logger } from "../../utils/logger.js";
 
 export class GithubService {
@@ -428,7 +428,13 @@ export class GithubService {
           });
         }
       } catch (error: any) {
-        logger.warn(`Failed to search enriched issues for language: ${language}`, { error: error.message });
+        try {
+          this.handleError(error, `Failed to search enriched issues for language: ${language}`);
+        } catch (handledError) {
+          if (handledError instanceof GithubRateLimitError) {
+            throw handledError;
+          }
+        }
       }
     }
 
@@ -480,13 +486,21 @@ export class GithubService {
       
       const [repoRes, prRes, langRes, topicsRes] = await Promise.allSettled([
         client.repos.get({ owner, repo }),
-        client.request("GET /search/issues", {
-          q: `repo:${owner}/${repo} is:pr is:closed`,
-          per_page: 30, // Sample the last 30 closed PRs
-        }),
+        client.pulls.list({ owner, repo, state: "closed", per_page: 30 }),
         client.repos.listLanguages({ owner, repo }),
         client.repos.getAllTopics({ owner, repo }),
       ]);
+
+      const rejections = [repoRes, prRes, langRes, topicsRes].filter(r => r.status === "rejected") as PromiseRejectedResult[];
+      for (const rej of rejections) {
+        try {
+          this.handleError(rej.reason, `Failed to fetch repo context for ${owner}/${repo}`);
+        } catch (handledError) {
+          if (handledError instanceof GithubRateLimitError) {
+            throw handledError;
+          }
+        }
+      }
 
       if (repoRes.status === "rejected") {
         throw new Error(repoRes.reason);
@@ -510,10 +524,10 @@ export class GithubService {
       let mergedCount = 0;
 
       if (prRes.status === "fulfilled") {
-        const prs = prRes.value.data.items;
+        const prs = prRes.value.data;
         prCount = prs.length;
         if (prCount > 0) {
-          mergedCount = prs.filter((item: any) => item.pull_request?.merged_at).length;
+          mergedCount = prs.filter((item: any) => item.merged_at).length;
           prAcceptanceRate = (mergedCount / prCount) * 100;
         }
       }
@@ -545,6 +559,9 @@ export class GithubService {
         activityLevel
       };
     } catch (error: any) {
+      if (error instanceof GithubRateLimitError) {
+        throw error;
+      }
       logger.warn(`Failed to fetch repo context for ${owner}/${repo}`, { error: error.message });
       return { 
         language: null, 
@@ -569,6 +586,41 @@ export class GithubService {
     const status = error.status || error.response?.status;
     const message = error.message || "Unknown GitHub API error";
 
+    // Rate Limit Detection
+    if (status === 403 || status === 429) {
+      const headers = error.response?.headers || {};
+      const remaining = headers["x-ratelimit-remaining"];
+      const reset = headers["x-ratelimit-reset"];
+      const retryAfter = headers["retry-after"];
+      const resource = headers["x-ratelimit-resource"];
+
+      let isRateLimit = false;
+      let resetAt = Date.now() + 60000; // Default 1 minute delay
+
+      if (retryAfter) {
+        isRateLimit = true;
+        resetAt = Date.now() + parseInt(retryAfter, 10) * 1000;
+      } else if (remaining === "0") {
+        isRateLimit = true;
+        if (reset) {
+          resetAt = parseInt(reset, 10) * 1000;
+        }
+      } else if (message.toLowerCase().includes("rate limit") || message.toLowerCase().includes("secondary rate limit")) {
+        isRateLimit = true;
+      }
+
+      if (isRateLimit) {
+        logger.warn("GitHub API Rate Limit Hit", {
+          contextMessage,
+          resource,
+          remaining,
+          resetAt,
+          retryAfter,
+        });
+        throw new GithubRateLimitError(resetAt, message);
+      }
+    }
+
     logger.error("GitHub API Error", { 
       status, 
       message, 
@@ -579,7 +631,7 @@ export class GithubService {
       throw new AppError("Repository or resource not found on GitHub", 404, "GITHUB_NOT_FOUND");
     }
     if (status === 401 || status === 403) {
-      throw new AppError("GitHub API authentication failed or rate limit exceeded", 401, "GITHUB_UNAUTHORIZED");
+      throw new AppError("GitHub API authentication failed or access denied", 401, "GITHUB_UNAUTHORIZED");
     }
 
     throw new InternalError("An unexpected error occurred while communicating with GitHub", "GITHUB_INTERNAL_ERROR");

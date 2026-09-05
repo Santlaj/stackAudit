@@ -1,546 +1,632 @@
 # StackAudit
 
-> **Open-source contribution intelligence for developers.**
+> **AI-Native Open-Source Contribution Intelligence Platform**
+> 
+> *Detects developer technical DNA, matches open-source contribution opportunities with deterministic scoring and Groq/Graphify AI synthesis, performs deep repository architecture analysis, and guides developers from issue discovery to merged pull requests.*
 
-StackAudit helps developers find open-source contribution opportunities
-that actually fit **who they are, what they know, and what they are
-currently trying to learn**.
+---
 
-Instead of making users search GitHub manually, StackAudit analyzes
-their GitHub profile and contribution history, collects explicit
-preferences, retrieves relevant open issues, and ranks opportunities
-using deterministic matching plus tightly scoped AI assistance.
+## 📑 Table of Contents
 
-------------------------------------------------------------------------
+- [Executive Summary](#executive-summary)
+- [1. The Problem](#1-the-problem)
+- [2. The Solution & Paradigm](#2-the-solution--paradigm)
+- [3. Why StackAudit Outperforms Generic Discovery](#3-why-stackaudit-outperforms-generic-discovery)
+- [4. End-to-End System Architecture](#4-end-to-end-system-architecture)
+- [5. Core Algorithms & Intelligence Engine](#5-core-algorithms--intelligence-engine)
+  - [A. Deterministic Match Scoring Engine (DMS 0–100%)](#a-deterministic-match-scoring-engine-dms-0100)
+  - [B. 4-Stage Repository Analysis Pipeline (Graphify + Groq)](#b-4-stage-repository-analysis-pipeline-graphify--groq)
+  - [C. Developer DNA Profiling & Signal Extraction](#c-developer-dna-profiling--signal-extraction)
+  - [D. Bounded Contribution Lifecycle & State Machine](#d-bounded-contribution-lifecycle--state-machine)
+  - [E. Truthful Daily Active-Time Signal](#e-truthful-daily-active-time-signal)
+  - [F. Deterministic 9-Badge Developer Achievement Engine](#f-deterministic-9-badge-developer-achievement-engine)
+- [6. Enterprise & Developer Features Showcase](#6-enterprise--developer-features-showcase)
+  - [A. Find My Contribution & Discovery Feed](#a-find-my-contribution--discovery-feed)
+  - [B. Contextual Contribution Workspace Drawer](#b-contextual-contribution-workspace-drawer)
+  - [C. Real-Time Repository Analysis Pipeline](#c-real-time-repository-analysis-pipeline)
+  - [D. 9-Badge Achievement Gallery & Baseline Alignment](#d-9-badge-achievement-gallery--baseline-alignment)
+  - [E. Daily Activity Heatmap & Engagement Meter](#e-daily-activity-heatmap--engagement-meter)
+  - [F. Enterprise Theme Engine (Dark, Light, System)](#f-enterprise-theme-engine-dark-light-system)
+- [7. Visual Showcase & UI Gallery](#7-visual-showcase--ui-gallery)
+- [8. Mathematical Formulation & Scoring Weights](#8-mathematical-formulation--scoring-weights)
+- [9. Technology Stack](#9-technology-stack)
+- [10. Monorepo Project Directory Structure](#10-monorepo-project-directory-structure)
+- [11. Local Setup & Reproduction Guide](#11-local-setup--reproduction-guide)
+- [12. Environment Configuration](#12-environment-configuration)
+- [13. REST API Reference](#13-rest-api-reference)
+- [14. Security, Governance & Architecture Rules](#14-security-governance--architecture-rules)
+- [15. Automated Verification & Test Matrix](#15-automated-verification--test-matrix)
+- [16. Future Roadmap](#16-future-roadmap)
 
-## Product Definition
+---
 
-**StackAudit = GitHub developer profile intelligence + contribution
-discovery + personalized matching.**
+## Executive Summary
 
-The V1 product answers one core question:
+- **Product Category:** Developer Infrastructure / Open-Source Contribution Intelligence
+- **Core Paradigm:** **Hybrid Deterministic-AI Architecture** — Deterministic algorithmic services evaluate technology overlap, repository health, maintainer activity, PR acceptance rates, and difficulty constraints, while tightly-bounded AI services (Graphify AST knowledge graphs + Groq LLM synthesis) provide contextual codebase understanding, target file identification, and step-by-step implementation guidance.
+- **Mission:** Eliminate the friction of open-source contributions. Move developers from *"I want to contribute but don't know where to start"* to *"I understand the codebase and know exactly what to modify."*
 
-> **"What open-source contribution should I work on next, and why is it
-> a good fit for me?"**
-
-GitHub remains the source of truth for repository and contribution data.
-StackAudit is the intelligence and decision layer on top of it.
-
-------------------------------------------------------------------------
-
-## V1 Core Flow
-
-``` text
-GitHub OAuth
-     ↓
-Developer Profile Ingestion
-     ↓
-Profile + Contribution Analysis
-     ↓
-User Preference / Learning Setup
-     ↓
-Contribution Search Criteria
-     ↓
-GitHub Open-Issue Retrieval
-     ↓
-Deterministic Filtering
-     ↓
-Candidate Matching
-     ↓
-Optional AI Relevance Explanation
-     ↓
-Ranked Contribution Opportunities
-     ↓
-Open on GitHub
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           StackAudit Core Loop                              │
+│                                                                             │
+│   [ Developer Profile ] ──▶ [ Ingest GitHub DNA & Preferences ]             │
+│                                           │                                 │
+│                                           ▼                                 │
+│   [ Candidate Discovery ] ──▶ [ Ingest & Index Open GitHub Issues ]         │
+│                                           │                                 │
+│                                           ▼                                 │
+│   [ Deterministic Matching ] ──▶ [ Multi-Factor Scoring (0–100%) ]          │
+│                                           │                                 │
+│                                           ▼                                 │
+│   [ Architectural Analysis ] ──▶ [ 4-Stage Pipeline: Graphify + Groq ]      │
+│                                           │                                 │
+│                                           ▼                                 │
+│   [ Contribution Workspace ] ──▶ [ Target Files + Actionable Guidance ]     │
+│                                           │                                 │
+│                                           ▼                                 │
+│   [ Lifecycle Tracking ] ──▶ [ Started ──▶ PR Submitted ──▶ Merged ]        │
+│                                           │                                 │
+│                                           ▼                                 │
+│   [ Developer Achievements ] ──▶ [ Badges + Truthful Active Time ]          │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-The system must never allow an unrestricted AI agent to search GitHub
-and invent recommendations.
+---
 
-------------------------------------------------------------------------
+## 1. The Problem
 
-## What V1 Includes
+Contributing to open-source software is widely recognized as the most effective path to technical mastery and career advancement. Yet over **80% of aspiring contributors drop out** before submitting their first pull request.
 
-### 1. GitHub Authentication
+The breakdown occurs across four critical failure points:
 
-Users sign in with GitHub OAuth.
+1. **The Discovery Paradox:** Developers search GitHub using generic labels (`good first issue`, `help wanted`). They encounter either trivial documentation typos or stale, unmaintained repositories where issues sit unattended for years.
+2. **Context Blindness:** A developer might know TypeScript and React, but opening a 100,000-line unfamiliar codebase is paralyzing. They do not know which modules are involved, how data flows through the application, or where to make changes.
+3. **Skill & Goal Mismatch:** Traditional search engines treat a developer's past as fixed. They ignore **what the developer is currently learning** (e.g., a Python engineer transitioning to Go or a frontend developer learning backend architectures).
+4. **Maintainer Responsiveness Void:** Developers spend hours crafting pull requests only to discover that the repository has a 5% PR merge rate and maintainers have been inactive for six months.
 
-StackAudit uses the authenticated GitHub identity to retrieve the data
-required for personalization.
+---
 
-### 2. GitHub Developer Profile Analysis
+## 2. The Solution & Paradigm
 
-StackAudit builds a developer profile from GitHub data, including:
+StackAudit re-architects open-source contribution into a **closed-loop intelligence and preparation journey**:
 
--   GitHub username and public profile information
--   Bio / description
--   Public repositories
--   Repository languages
--   Contribution history
--   Issues
--   Pull requests
--   Commits and other useful contribution signals
--   Technology signals derived from repositories
+$$\text{DISCOVER} \longrightarrow \text{UNDERSTAND} \longrightarrow \text{MATCH} \longrightarrow \text{PREPARE} \longrightarrow \text{CONTRIBUTE}$$
 
-The system distinguishes between:
+- **Personalization Before Search:** Constructs the developer's technical DNA from observed GitHub activity (languages, repositories, commits) and explicit current learning goals.
+- **Deterministic Match Scoring (DMS):** Evaluates issues against a calibrated 6-factor mathematical model rather than generic keyword searches.
+- **Automated Repository Intelligence:** Runs a 4-stage pipeline combining **Graphify AST knowledge graphs** and **Groq (`openai/gpt-oss-120b`)** to inspect codebase architecture, identify target files, and synthesize implementation approaches.
+- **Lifecycle Accountability:** Tracks contributions through a formal state machine (`DISCOVERED` $\to$ `SAVED` $\to$ `ANALYZED` $\to$ `STARTED` $\to$ `PR_SUBMITTED` $\to$ `MERGED`).
+- **Truthful Developer Proof:** Measures engagement through a **privacy-respecting, focus-verified active-time signal** and grants deterministic achievement badges.
 
--   **Observed:** directly available from GitHub
--   **Inferred:** derived by StackAudit
--   **User-provided:** explicitly supplied by the developer
+---
 
-StackAudit must not present inferred skill levels as verified facts.
+## 3. Why StackAudit Outperforms Generic Discovery
 
-### 3. Developer Preferences
+| Capability | Generic GitHub Search / Discovery Bots | StackAudit Contribution Intelligence |
+| :--- | :--- | :--- |
+| **Search Paradigm** | Keyword & label matching (`good-first-issue`) | Multi-dimensional scoring combining developer DNA + learning goals |
+| **Codebase Understanding** | None. Developer must read raw source code | Automated 4-stage pipeline with Graphify knowledge graphs |
+| **Maintainer Signal** | Unchecked open issue counts | Deterministic PR acceptance rate, activity level, and issue freshness filters |
+| **Target Scope** | Entire repository | Precise relevant files identified before code modification |
+| **AI Safety Model** | Unbounded generative hallucinations | Tightly bounded: deterministic search + Graphify AST facts + Groq synthesis |
+| **Developer Tracking** | None | 7-stage lifecycle state machine with GitHub PR linking |
+| **Engagement Metric** | Unverified vanity streaks | Privacy-first, active-time heartbeats (strict tab visibility + window focus) |
+| **Achievements** | Generic commit counts | 9 deterministic contribution badges derived strictly from database events |
 
-GitHub history describes the developer's past. V1 also captures what the
-developer wants **now**.
+---
 
-Users can specify:
+## 4. End-to-End System Architecture
 
--   Technologies they know
--   Technologies they are currently learning
--   Desired contribution area
--   Desired contribution complexity
--   Contribution type
--   Learning goals
--   Optional preferred project characteristics
+StackAudit is engineered as a **modular monolith** within a high-performance **Turborepo monorepo**, strictly separating concerns across 5 architectural tiers:
 
-Examples:
-
-``` text
-Current focus:
-Java, Spring Boot, REST APIs
-
-Contribution area:
-Backend
-
-Complexity:
-Intermediate
-
-Contribution type:
-Bug fixes, features
-
-Learning goal:
-Spring Boot + backend engineering
+```text
+═══════════════════════════════════════════════════════════════════════════════════
+TIER 1 — PRESENTATION LAYER (Next.js 16 · React 19 · Tailwind CSS · shadcn/ui)
+═══════════════════════════════════════════════════════════════════════════════════
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        🖥️ Modern Developer Workspace                        │
+│                                                                             │
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌───────────┐  │
+│  │ 🧭 Discovery    │ │ 📁 Saved        │ │ 📊 Profile      │ │ ⚙️ Theme   │  │
+│  │    Parameters   │ │    Workspace    │ │    & Activity   │ │   Studio  │  │
+│  └─────────────────┘ └─────────────────┘ └─────────────────┘ └───────────┘  │
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐                │
+│  │ ⚡ 4-Stage      │ │ 🏆 9-Badge      │ │ 📈 30-Day / 365 │                │
+│  │    Analysis Hub │ │    Gallery      │ │    Heatmaps     │                │
+│  └─────────────────┘ └─────────────────┘ └─────────────────┘                │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │ HTTP / REST (Credentials & Session Cookie)
+                                       ▼
+═══════════════════════════════════════════════════════════════════════════════════
+TIER 2 — API GATEWAY & APPLICATION MIDDLEWARE (Node.js · Express 5 · Better Auth)
+═══════════════════════════════════════════════════════════════════════════════════
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  REQUEST ──▶ [ 🛡️ CORS Guard ] ──▶ [ 🍪 Cookie Parser ]                      │
+│          ──▶ [ 🔑 Better Auth Session ] ──▶ [ 🚦 Rate Limiter ]             │
+│          ──▶ [ ✅ Zod Request Validator ] ──▶ [ 🎛️ Feature Controllers ]    │
+└──────────────────┬───────────────┬───────────────┬───────────────┬──────────┘
+                   │               │               │               │
+                   ▼               ▼               ▼               ▼
+═══════════════════════════════════════════════════════════════════════════════════
+TIER 3 — DOMAIN SERVICES (Core Business Logic & Intelligence)
+═══════════════════════════════════════════════════════════════════════════════════
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ┌───────────────────────────┐       ┌───────────────────────────────────┐  │
+│  │ 📐 MATCHING ENGINE        │       │ 🔬 REPOSITORY ANALYSIS ENGINE     │  │
+│  │ • 6-Factor DMS Algorithm  │       │ • 4-Stage Async Queue Pipeline    │  │
+│  │ • Repo Language Proportions│      │ • Git Fetcher & Metadata Parser   │  │
+│  │ • Framework Topic Scoring │       │ • AST Knowledge Graph Generator   │  │
+│  └─────────────┬─────────────┘       └─────────────────┬─────────────────┘  │
+│                │                                       │                    │
+│                ▼                                       ▼                    │
+│  ┌───────────────────────────┐       ┌───────────────────────────────────┐  │
+│  │ 👤 DEVELOPER DNA SERVICE  │       │ ⏱️ ACTIVE TIME & BADGE SERVICE    │  │
+│  │ • GitHub Ingest & Signals │       │ • Bounded 30s Focus Heartbeats    │  │
+│  │ • Explicit Goal Store     │       │ • Deterministic 9-Badge Derivation│  │
+│  └───────────────────────────┘       └───────────────────────────────────┘  │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │ Prisma ORM 6
+                                       ▼
+═══════════════════════════════════════════════════════════════════════════════════
+TIER 4 — PERSISTENCE & QUEUE LAYER (PostgreSQL · Redis · BullMQ)
+═══════════════════════════════════════════════════════════════════════════════════
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ┌──────────────┐ ┌──────────────────┐ ┌──────────────────┐ ┌────────────┐  │
+│  │ 👤 users     │ │ 📁 issue_matches │ │ 📄 github_issues │ │ ⚡ daily_  │  │
+│  │    & profile │ │    & lifecycle   │ │    & raw metrics │ │    activity│  │
+│  └──────────────┘ └──────────────────┘ └──────────────────┘ └────────────┘  │
+│  ┌───────────────────────────────────┐ ┌─────────────────────────────────┐  │
+│  │ 📦 repository_analyses (Context)  │ │ 🐇 BullMQ + Redis (Async Ingest) │  │
+│  └───────────────────────────────────┘ └─────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+═══════════════════════════════════════════════════════════════════════════════════
+TIER 5 — EXTERNAL AI & INTELLIGENCE INTEGRATIONS (Graphify · Groq · GitHub)
+═══════════════════════════════════════════════════════════════════════════════════
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ┌───────────────────────────┐       ┌───────────────────────────────────┐  │
+│  │ 🐙 GitHub REST & GraphQL  │       │ 🧠 Groq LLM (openai/gpt-oss-120b) │  │
+│  │ • Profile & Commit Signals│       │ • Structured Context Synthesis    │  │
+│  │ • Issues & Label Metadata │       │ • Zero-Hallucination Guardrails   │  │
+│  └───────────────────────────┘       └───────────────────────────────────┘  │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │ 🕸️ Graphify Engine (AST-Level Knowledge Graph & Architectural Traversal│  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4. Contribution Discovery
+---
 
-The primary V1 opportunity is an **open GitHub issue that the user can
-work on**.
+## 5. Core Algorithms & Intelligence Engine
 
-V1 should support controlled filters such as:
+### A. Deterministic Match Scoring Engine (DMS 0–100%)
 
--   Complexity
--   Technology / language
--   Framework
--   Contribution type
--   Project activity
--   Issue labels
--   Beginner friendliness
--   Learning goal
--   Repository characteristics
+The **Deterministic Match Score (DMS)** computes compatibility between a developer and an open-source issue across 6 weighted mathematical dimensions:
 
-"Good First Issue" is one complexity option, not the entire product.
+$$\text{DMS} = \text{clamp}_{0}^{100}\left( S_{\text{lang}} + S_{\text{fw}} + S_{\text{diff}} + S_{\text{type}} + S_{\text{activity}} + S_{\text{freshness}} + S_{\text{pr}}\right)$$
 
-Open PRs may be used as repository activity / maintainer signals, but
-**existing open PRs are not the primary contribution-search target in
-V1**.
-
-### 5. Personalized Matching
-
-StackAudit compares:
-
-``` text
-Developer Profile
-+
-Current Preferences
-+
-Learning Goals
-+
-Contribution Requirements
+```text
+┌──────────────────────────┬──────────┬──────────────────────────────────────────────────────────┐
+│ Dimension                │ Weight   │ Evaluation Logic & Calibrated Heuristics                 │
+├──────────────────────────┼──────────┼──────────────────────────────────────────────────────────┤
+│ 1. Language Match        │ 35%      │ Proportion of repo in developer languages:               │
+│                          │          │ • >50% of codebase matching: +35 pts                     │
+│                          │          │ • 10%–50% of codebase matching: +25 pts                  │
+│                          │          │ • <10% presence: +15 pts                                 │
+├──────────────────────────┼──────────┼──────────────────────────────────────────────────────────┤
+│ 1b. Framework Bonus      │ +10%     │ Matched via repo topics or description (React, Node, etc)│
+├──────────────────────────┼──────────┼──────────────────────────────────────────────────────────┤
+│ 2. Difficulty Match      │ 20%      │ Exact match to preference (Beginner / Inter / Adv): +20  │
+├──────────────────────────┼──────────┼──────────────────────────────────────────────────────────┤
+│ 3. Contribution Type     │ 15%      │ Preferred type (Bug Fix, Feature, Docs, Refactor): +15   │
+├──────────────────────────┼──────────┼──────────────────────────────────────────────────────────┤
+│ 4. Repository Activity   │ 10%      │ Maintenance status: Active (+10), Moderate (+5), Low (+0)│
+├──────────────────────────┼──────────┼──────────────────────────────────────────────────────────┤
+│ 5. Issue Freshness       │ 10%      │ Age/Staleness: Fresh (+10), Aging (+5), Stale (+0)       │
+├──────────────────────────┼──────────┼──────────────────────────────────────────────────────────┤
+│ 6. PR Acceptance Rate    │ 10%      │ Historical merge rate: >70% (+10), >40% (+5), <40% (+0)  │
+└──────────────────────────┴──────────┴──────────────────────────────────────────────────────────┘
 ```
 
-against:
+### B. 4-Stage Repository Analysis Pipeline (Graphify + Groq)
 
-``` text
-Repository
-+
-Issue
-+
-Repository Activity
-+
-Contribution Signals
+When a developer explores an issue, StackAudit executes an automated 4-stage intelligence pipeline:
+
+```text
+Stage 1: REPOSITORY_LOADING
+  │ • Shallow git clone / API tree fetch
+  │ • Metadata validation (stars, open issues, commit SHA verification)
+  ▼
+Stage 2: ARCHITECTURE_ANALYZED
+  │ • Graphify parses project directory tree & AST
+  │ • Detects module boundaries, package managers, and core entrypoints
+  ▼
+Stage 3: RELEVANT_FILES_IDENTIFIED
+  │ • Maps issue description tokens against AST symbols and filenames
+  │ • Isolates 3–5 concrete target files needing inspection
+  ▼
+Stage 4: CONTEXT_SYNTHESIZED
+    • Groq (openai/gpt-oss-120b) synthesizes factual Graphify context
+    • Generates: Architecture Overview, Target Area Scope, What You'll Do
 ```
 
-The system produces a ranked set of opportunities.
+### C. Developer DNA Profiling & Signal Extraction
 
-Each recommendation should explain:
+StackAudit constructs a unified developer profile across three signal tiers:
 
--   Why it matches the user
--   Which skills are relevant
--   What the user may learn
--   What appears to be missing
--   Why the estimated complexity was assigned
--   Which signals influenced the ranking
+1. **Observed Signals (GitHub Truth):** Public repositories, primary languages, commit distribution, stars, PRs submitted, and organizations.
+2. **Inferred Signals (Derived):** Frequently paired frameworks, architectural domains (Frontend, Backend, Systems), and issue difficulty sweet-spot.
+3. **Explicit Signals (User Intent):** Current learning goals, desired contribution areas, and difficulty sliders configured in the discovery panel.
 
-### 6. Controlled AI Assistance
+### D. Bounded Contribution Lifecycle & State Machine
 
-AI is an **analysis and explanation layer**, not the search engine.
+Every contribution opportunity is tracked through an atomic state machine:
 
-Deterministic systems handle:
+$$\text{DISCOVERED} \longrightarrow \text{VIEWED} \longrightarrow \text{SAVED} \longrightarrow \text{ANALYZED} \longrightarrow \text{STARTED} \longrightarrow \text{PR\_SUBMITTED} \longrightarrow \text{MERGED}$$
 
--   GitHub retrieval
--   filters
--   labels
--   languages
--   dates
--   repository activity
--   quantitative metrics
--   hard exclusions
--   candidate limits
+- **`STARTED`:** Triggers redirect to the GitHub issue and records active contribution status.
+- **`PR_SUBMITTED`:** Links the developer's pull request URL to the opportunity record.
+- **`MERGED`:** Terminal success state confirming contribution completion.
 
-AI may handle:
+### E. Truthful Daily Active-Time Signal
 
--   understanding natural-language issue descriptions
--   semantic relevance
--   contribution explanation
--   learning-value explanation
--   concise guidance for approaching an issue
+StackAudit implements an honest active-time metric that measures **true developer engagement**, rejecting vanity metrics:
 
-AI must receive only the necessary candidate context.
+- **Strict Visibility Guard:** Only ticks when `document.visibilityState === "visible"`.
+- **Strict Focus Guard:** Only ticks when `document.hasFocus() === true`. Background tabs, minimized windows, and idle periods are completely excluded.
+- **PostgreSQL Persistence:** Aggregates time into `daily_activity` records under canonical UTC dates via atomic upserts.
 
-AI must not:
+### F. Deterministic 9-Badge Developer Achievement Engine
 
--   freely crawl/search GitHub
--   invent repositories or issues
--   override hard user filters
--   fabricate GitHub metrics
--   claim an issue is suitable without evidence
--   determine factual quantitative metrics
+Badges are derived strictly from database events, preventing arbitrary gamification:
 
-### 7. Contribution Opportunity Details
+1. 🥇 **First Contribution:** Started your first contribution (`STARTED`).
+2. 🚀 **First PR:** Submitted your first pull request (`PR_SUBMITTED`).
+3. 🏆 **Merged:** First pull request merged into upstream repository (`MERGED`).
+4. ⚡ **Contributor ×5:** Started 5 qualifying contributions.
+5. 🌟 **Contributor ×10:** Started 10 qualifying contributions.
+6. 🔍 **Issue Explorer:** Explored $\ge 5$ distinct open-source issues.
+7. 🌐 **Repository Explorer:** Explored $\ge 5$ distinct open-source repositories.
+8. 🧩 **Multi-Stack:** Contributed across $\ge 3$ distinct programming languages.
+9. 🏛️ **Repository Contributor:** Reached `STARTED` across $\ge 3$ distinct repositories.
 
-Each result should answer:
+---
 
-``` text
-Why this?
-What will I work with?
-Why does it match me?
-What can I learn?
-How difficult does it appear?
-What should I understand before starting?
-Where do I contribute?
+## 6. Enterprise & Developer Features Showcase
+
+### A. Find My Contribution & Discovery Feed
+- Configurable **Discovery Parameters** across 13+ languages (TypeScript, Python, Java, C++, Go, Rust, etc.) and 10+ frameworks (React, Next.js, Node.js, Spring Boot, etc.).
+- Continuous difficulty slider from **Beginner** to **Intermediate** to **Advanced**.
+- Real-time matching feed with match percentages, active maintainer signals, and issue tags.
+
+### B. Contextual Contribution Workspace Drawer
+- Side-by-side issue brief inspection without leaving the discovery feed.
+- **At A Glance** metrics: Last updated, opened date, open issues count, PR acceptance rate, and maintainer activity.
+- **Contribution Context Preview**: Architecture summary, Target Area files, and "What you'll do" guide.
+
+### C. Real-Time Repository Analysis Pipeline
+- Visual 4-stage pipeline execution with progress animation.
+- Real-time radar visualization displaying AST entity parsing and dependency mapping.
+- Factual code context generation powered by Graphify and Groq.
+
+### D. 9-Badge Achievement Gallery & Baseline Alignment
+- Mathematically centered **5-over-4 gallery layout**: Row 1 contains 5 equal badges; Row 2 centers 4 equal badges as a unified group.
+- Uniform horizontal baseline alignment across artwork, title (wrapped up to 2 lines without aggressive ellipsis), description, status pill, and earned date.
+
+### E. Daily Activity Heatmap & Engagement Meter
+- 30-day interactive mini-strip on Profile with real-time active-time updates.
+- 52-week (365-day) GitHub-style contribution calendar on `/activity`.
+- Honest duration tooltips (e.g., `<1m active`, `24m active`, `2h 15m active`).
+
+### F. Enterprise Theme Engine (Dark, Light, System)
+- High-contrast developer Dark Mode.
+- Clean, editorial Light Mode for documentation and daytime workflows.
+- Native System preference synchronization via `next-themes`.
+
+---
+
+## 7. Visual Showcase & UI Gallery
+
+> *Production UI screenshots captured from live StackAudit development builds.*
+
+### A. Developer Profile & Achievement Operations Overview
+*Comprehensive profile inspection showing developer DNA, contribution history metrics, 30-day active-time heatmap, tech stack badges, and the centered 9-badge achievement gallery.*
+
+![Developer Profile Overview](docs/screenshots/01-profile-overview.png)
+
+---
+
+### B. Enterprise Theme Engine (Dark, Light & System)
+*Theme management interface supporting seamless switching between high-contrast Dark Mode, technical Light Mode, and System synchronization.*
+
+![Theme Settings](docs/screenshots/02-theme-settings.png)
+
+---
+
+### C. Find My Contribution (Discovery Engine with Language & Framework Filters)
+*Interactive discovery feed with dynamic parameters for programming languages, framework tags, difficulty slider, and ranked matching candidate cards.*
+
+![Find My Contribution](docs/screenshots/03-find-my-contribution.png)
+
+---
+
+### D. Contextual Contribution Workspace & At-a-Glance Repository Signals
+*Split-view workspace drawer providing immediate repository health signals, PR acceptance rate, issue brief, architecture preview, and direct GitHub action buttons.*
+
+![Contribution Workspace Drawer](docs/screenshots/04-contribution-workspace.png)
+
+---
+
+### E. 4-Stage Repository Analysis Pipeline in Progress
+*Live execution of the deep repository intelligence engine showing staged progress across Loading, Architecture Inspection, Relevant Files Identification, and Context Generation.*
+
+![Analysis Pipeline](docs/screenshots/05-analysis-pipeline.png)
+
+---
+
+## 8. Mathematical Formulation & Scoring Weights
+
+The Deterministic Match Score (DMS) calculates opportunity compatibility through strict numerical criteria:
+
+```text
+       Factor              Range    Weight                       Formula / Criteria
+────────────────────────────────────────────────────────────────────────────────────────────────
+Language Overlap (L)       0 – 35    35%     Ratio = (Bytes of matched languages) / (Total repo bytes)
+                                             Ratio > 0.50 ──▶ 35 pts
+                                             Ratio > 0.10 ──▶ 25 pts
+                                             Ratio > 0.00 ──▶ 15 pts
+
+Framework Topic (F)        0 – 10    +10%    Matched framework keywords in repo topics / description
+
+Difficulty Target (D)      0 – 20    20%     Issue difficulty matches developer preference:
+                                             Exact match ──▶ 20 pts
+                                             Mismatch    ──▶ 0 pts
+
+Contribution Type (T)      0 – 15    15%     Issue type matches preferred type:
+                                             Match       ──▶ 15 pts
+                                             Mismatch    ──▶ 0 pts
+
+Repository Activity (A)    0 – 10    10%     Repository commit & issue cadence:
+                                             "active"    ──▶ 10 pts
+                                             "moderate"  ──▶ 5 pts
+                                             "inactive"  ──▶ 0 pts
+
+Issue Freshness (S)        0 – 10    10%     Issue creation & update recency:
+                                             "fresh"     ──▶ 10 pts
+                                             "aging"     ──▶ 5 pts
+                                             "stale"     ──▶ 0 pts
+
+PR Acceptance Rate (P)     0 – 10    10%     Historical PR merge percentage:
+                                             Rate > 70%  ──▶ 10 pts
+                                             Rate > 40%  ──▶ 5 pts
+                                             Rate <= 40% ──▶ 0 pts
+────────────────────────────────────────────────────────────────────────────────────────────────
+Total Compatibility Score  0 – 100  100%     Sum clamped to [0, 100]
 ```
 
-The final action should lead the user to GitHub rather than attempting
-to replace GitHub.
+---
 
-------------------------------------------------------------------------
+## 9. Technology Stack
 
-## V1 Non-Goals
+### Frontend Application
+- **Framework:** [Next.js 16 (App Router)](https://nextjs.org/) with React 19
+- **Styling:** [Tailwind CSS 4](https://tailwindcss.com/) with custom developer design tokens
+- **Component Primitives:** [Radix UI](https://www.radix-ui.com/) & [shadcn/ui](https://ui.shadcn.com/)
+- **Icons:** [Lucide React](https://lucide.dev/) & [Tabler Icons](https://tabler-icons.io/)
+- **Animation:** [Motion](https://motion.dev/) (Framer Motion)
+- **Theme:** [next-themes](https://github.com/pacocoursey/next-themes)
+- **Client Testing:** [Vitest](https://vitest.dev/) & [Testing Library](https://testing-library.com/)
 
-V1 will NOT attempt to become:
+### Backend REST API
+- **Runtime:** [Node.js v20+ / v24 (ES Modules)](https://nodejs.org/)
+- **Server Framework:** [Express 5](https://expressjs.com/)
+- **Language:** [TypeScript 5.8+](https://www.typescriptlang.org/)
+- **Database ODM:** [Prisma ORM 6](https://www.prisma.io/)
+- **Database:** [PostgreSQL](https://www.postgresql.org/)
+- **Authentication:** [Better Auth](https://www.better-auth.com/) (GitHub OAuth & Google OAuth)
+- **Queues & Jobs:** [BullMQ 5](https://docs.bullmq.io/) & [ioredis](https://github.com/redis/ioredis)
+- **Validation:** [Zod 4](https://zod.dev/)
 
--   A Git hosting platform
--   A Git client
--   An IDE
--   A source-code editor
--   An automated PR generator
--   An autonomous coding agent
--   A recruiter intelligence platform
--   A complete GitHub portfolio scoring platform
--   A repository health product
--   A social network
--   A generic AI chatbot
--   A general-purpose GitHub search replacement
+### Intelligence & Analysis Engines
+- **Knowledge Graph:** [Graphify](https://github.com/) (AST Code Parsing & Architecture Graph)
+- **LLM Synthesis:** [Groq API](https://groq.com/) (`openai/gpt-oss-120b` inference)
+- **Google Gemini:** Semantic feature extraction
+- **GitHub Ingestion:** [Octokit Rest API](https://github.com/octokit/rest.js/)
 
-These may be considered later only if they support the core
-contribution-discovery mission.
+---
 
-------------------------------------------------------------------------
+## 10. Monorepo Project Directory Structure
 
-## Product Principles
-
-### Personalization Before Search
-
-Do not search broadly and personalize afterward.
-
-Build the user's search context first.
-
-### Deterministic Before AI
-
-Use deterministic filters and signals to reduce the candidate set before
-invoking AI.
-
-### Explain Every Recommendation
-
-A recommendation without a reason is not useful.
-
-### GitHub Is the Source of Truth
-
-StackAudit must link recommendations back to GitHub and avoid
-duplicating GitHub as a workflow platform.
-
-### User Intent Matters
-
-The user's current learning goals can be more relevant than historical
-GitHub activity.
-
-### Observed ≠ Inferred
-
-Never confuse GitHub facts with StackAudit's interpretation.
-
-### Trust Over Quantity
-
-Five strong recommendations are better than fifty weak ones.
-
-### Cost-Aware AI
-
-AI should be invoked only where it creates measurable value.
-
-------------------------------------------------------------------------
-
-## V1 Architecture
-
-StackAudit uses a modular monolith.
-
-``` text
-Frontend
-   │
-   ▼
-API
-   │
-   ├── Authentication
-   ├── Developer Profile
-   ├── Contribution Discovery
-   ├── Matching
-   ├── AI Analysis
-   └── Platform
-         │
-         ▼
-     PostgreSQL
-         │
-         └── GitHub Provider
+```text
+StackAudit/
+├── apps/
+│   ├── api/                           # Express 5 Backend REST API
+│   │   ├── prisma/
+│   │   │   ├── schema.prisma          # Database schema (users, matches, issues, activity)
+│   │   │   └── migrations/            # SQL migration history
+│   │   └── src/
+│   │       ├── config/                # Environment variables & constants
+│   │       ├── infrastructure/        # Prisma, Redis, BullMQ, and Better Auth setup
+│   │       ├── middleware/            # Auth guards, error handlers, and loggers
+│   │       ├── modules/
+│   │       │   ├── activity/          # Heartbeat tracking & daily activity endpoints
+│   │       │   ├── analysis/          # 4-stage pipeline, Graphify, and Groq synthesis
+│   │       │   ├── auth/              # Better Auth controller & session helpers
+│   │       │   ├── badges/            # Deterministic 9-badge calculation engine
+│   │       │   ├── discovery/         # GitHub issue search & 6-factor DMS scoring
+│   │       │   ├── github/            # Octokit client & repository ingestion
+│   │       │   ├── health/            # Liveness & database connection checks
+│   │       │   └── user/              # Developer DNA profile & preference routes
+│   │       ├── app.ts                 # Express application configuration
+│   │       └── server.ts              # HTTP server entrypoint
+│   │
+│   └── web/                           # Next.js 16 App Router Frontend
+│       ├── src/
+│       │   ├── app/
+│       │   │   ├── activity/          # 12-month calendar heatmap page
+│       │   │   ├── analyze/           # Dedicated repository analysis workspace
+│       │   │   ├── discover/          # Find My Contribution discovery page
+│       │   │   ├── profile/           # Developer profile & badge showcase
+│       │   │   ├── saved/             # Saved contributions workspace
+│       │   │   ├── settings/          # Appearance & theme studio
+│       │   │   └── layout.tsx         # Root layout with ActiveTimeTracker & ThemeProvider
+│       │   ├── components/
+│       │   │   ├── activity/          # ActiveTimeTracker & DailyActivityCard
+│       │   │   ├── analysis/          # PipelineProgress, Radar visual, ContextGuide
+│       │   │   ├── layout/            # Sidebar, Topbar, Shell, ProtectedRoute
+│       │   │   ├── profile/           # ContributionBadges & BadgeArtwork
+│       │   │   └── ui/                # shadcn/ui buttons, dialogs, sliders, badges
+│       │   ├── lib/                   # API client, auth client, utils, formatters
+│       │   └── globals.css            # Tailwind 4 design tokens & CSS variables
+│       └── vitest.config.ts           # Vitest configuration for UI components
+│
+├── docs/                              # Technical specs, ADRs, handbook
+├── graphify-out/                      # Graphify AST knowledge graph outputs
+├── turbo.json                         # Turborepo task pipeline configuration
+├── pnpm-workspace.yaml                # Monorepo workspace configuration
+└── package.json                       # Root scripts (turbo dev, build, test)
 ```
 
-External providers are isolated behind adapters.
+---
 
-Business logic must never depend directly on a GitHub SDK or AI SDK.
+## 11. Local Setup & Reproduction Guide
 
-------------------------------------------------------------------------
+### Prerequisites
+- **Node.js:** `v20.0.0` or higher (Node.js 22+ recommended)
+- **Package Manager:** `pnpm` (`v9.0.0` or higher)
+- **PostgreSQL:** Running locally on port `5432` (or a hosted PostgreSQL URI)
+- **Redis:** Running locally on port `6379` (or Upstash Redis)
 
-## Core V1 Modules
-
-### Authentication
-
-Owns:
-
--   GitHub OAuth
--   sessions
--   authorization
--   GitHub token lifecycle
-
-### Developer Profile
-
-Owns:
-
--   GitHub identity
--   observed profile data
--   contribution history
--   detected technology signals
--   user-confirmed skills
--   learning goals
--   preferences
-
-### Contribution Discovery
-
-Owns:
-
--   contribution search
--   candidate retrieval
--   filters
--   pagination
--   GitHub issue mapping
-
-### Contribution Matching
-
-Owns:
-
--   deterministic matching
--   hard constraints
--   relevance scoring
--   ranking signals
--   match explanations
-
-### AI Analysis
-
-Owns:
-
--   semantic issue understanding
--   qualitative relevance
--   learning-value explanation
--   contribution guidance
-
-It does not own retrieval or hard filtering.
-
-------------------------------------------------------------------------
-
-## V1 User Experience
-
-### Onboarding
-
-``` text
-Connect GitHub
-      ↓
-Analyze profile
-      ↓
-Review detected technologies
-      ↓
-Tell StackAudit what you are learning
-      ↓
-Choose contribution preferences
-      ↓
-Find opportunities
+### Step 1: Clone Repository
+```bash
+git clone https://github.com/santlaj/StackAudit.git
+cd StackAudit
 ```
 
-The user should be able to correct detected information.
-
-### Search Setup
-
-Before searching, ask for the constraints needed to produce useful
-results.
-
-Example:
-
-``` text
-Complexity
-[ Good First Issue ] [ Beginner ] [ Intermediate ] [ Advanced ] [ Hard ]
-
-Technology
-[ Java ] [ Spring Boot ]
-
-Contribution
-[ Bug Fix ] [ Feature ] [ Documentation ] [ Testing ]
-
-Focus
-[ Backend ]
-
-Learning Goal
-[ Spring Boot / REST APIs ]
-
-              Find Contributions
+### Step 2: Install Monorepo Dependencies
+```bash
+pnpm install
 ```
 
-### Results
-
-Results should prioritize fit, not popularity.
-
-Example:
-
-``` text
-Improve request validation in API module
-
-Intermediate
-Java · Spring Boot · REST
-
-92% match
-
-Why it fits
-- Matches your current Spring Boot focus
-- Uses Java and REST APIs
-- Similar to your backend experience
-
-You may learn
-- Bean validation
-- REST error handling
-- Integration testing
-
-[View issue on GitHub]
+### Step 3: Configure Environment Variables
+Copy example files and set credentials:
+```bash
+cp apps/api/.env.example apps/api/.env
 ```
 
-------------------------------------------------------------------------
+### Step 4: Run Database Migrations & Generate Prisma Client
+```bash
+cd apps/api
+npx prisma migrate dev
+npx prisma generate
+cd ../..
+```
 
-## Technology Stack
+### Step 5: Start Development Servers
+Start both backend (Port 4000) and frontend (Port 3000) concurrently via Turborepo:
+```bash
+pnpm dev
+```
 
-### Frontend
+Open your browser at: **`http://localhost:3000`**
 
--   Next.js
--   React
--   TypeScript
--   Tailwind CSS
--   shadcn/ui
+---
 
-### Backend
+## 12. Environment Configuration
 
--   Node.js
--   Express
--   TypeScript
+### Backend API Configuration (`apps/api/.env`)
+| Variable | Description | Example / Default |
+| :--- | :--- | :--- |
+| `PORT` | Express listening port | `4000` |
+| `NODE_ENV` | Application environment | `development` |
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql://postgres:password@localhost:5432/stackaudit` |
+| `REDIS_URL` | Redis instance connection string | `redis://localhost:6379` |
+| `BETTER_AUTH_SECRET` | Secret key for Better Auth encryption | `32-byte-hex-string` |
+| `BETTER_AUTH_URL` | Base URL of auth service | `http://localhost:4000` |
+| `GITHUB_CLIENT_ID` | GitHub OAuth application client ID | `Ov23lii...` |
+| `GITHUB_CLIENT_SECRET`| GitHub OAuth application client secret | `f298e04...` |
+| `GROQ_API_KEY` | Groq API Key for LLM inference | `gsk_...` |
+| `GROQ_MODEL` | Groq model identifier | `openai/gpt-oss-120b` |
+| `FRONTEND_URL` | Allowed CORS frontend origin | `http://localhost:3000` |
 
-### Database
+### Frontend Client Configuration (`apps/web/.env.local`)
+| Variable | Description | Example / Default |
+| :--- | :--- | :--- |
+| `NEXT_PUBLIC_API_URL` | Base URL for backend REST API | `http://localhost:4000` |
 
--   PostgreSQL
--   Prisma ORM
+---
 
-### Authentication
+## 13. REST API Reference
 
--   Better Auth
--   GitHub OAuth
+### Health & Observability
+- **`GET /api/health`** — Liveness probe, database connection status, and server uptime.
 
-### Infrastructure
+### Authentication & Developer Identity
+- **`GET /api/auth/get-session`** — Better Auth session resolution.
+- **`GET /api/users/profile`** — Fetch current developer profile, observed languages, and learning goals.
+- **`PATCH /api/users/profile`** — Update focus areas, learning goals, and contribution preferences.
+- **`GET /api/users/badges`** — Evaluates and returns all 9 deterministic achievement badges.
 
--   Redis and BullMQ only where justified by workload
--   Docker
--   GitHub Actions
+### Contribution Discovery & Matching
+- **`GET /api/discovery/feed`** — Retrieves personalized, ranked contribution opportunities using the 6-factor DMS algorithm.
+- **`POST /api/discovery/search`** — Executes parameter-constrained issue search across language, framework, and difficulty filters.
+- **`PATCH /api/discovery/match/:matchId/status`** — Transitions opportunity status (`VIEWED`, `SAVED`, `STARTED`, `PR_SUBMITTED`, `MERGED`).
 
-### External Integrations
+### Repository Intelligence & Analysis
+- **`POST /api/analysis/:matchId/start`** — Triggers asynchronous 4-stage Graphify + Groq analysis.
+- **`GET /api/analysis/:matchId`** — Polls status and retrieves generated architecture overview and relevant files.
 
--   GitHub API
--   AI provider behind an internal provider interface
+### Truthful Daily Active Time
+- **`POST /api/activity/heartbeat`** — Records a bounded 30s active-time heartbeat for authenticated, focused sessions.
+- **`GET /api/activity/daily?days=30`** — Returns daily active-time records for heatmap rendering.
 
-Technology choices are implementation details. Product requirements must
-not depend on a specific provider.
+---
 
-------------------------------------------------------------------------
+## 14. Security, Governance & Architecture Rules
 
-## V1 Success Criteria
+- **Zero Arbitrary AI Inventions:** The system never allows an unrestricted AI agent to invent issues or repositories. AI is strictly bounded to contextualizing pre-validated GitHub records.
+- **Observed vs. Inferred Separation:** Inferred developer skills are always explicitly labeled and never presented as verified facts.
+- **No Hallucinated Quantitative Signals:** Quantitative metrics (stars, PR acceptance rates, commit dates) are derived strictly from deterministic GitHub metadata.
+- **Privacy-First Tracking:** Active time is measured entirely through local focus events and aggregated into bounded daily totals. No mouse movement, keystroke logging, or screen monitoring is ever implemented.
+- **Session Credentials Protection:** All mutating endpoints require authenticated session cookies with strict SameSite and CORS validation.
 
-V1 is successful when a new user can:
+---
 
-1.  Sign in with GitHub.
-2.  See a useful analysis of their GitHub profile and contributions.
-3.  Confirm or correct their detected technologies.
-4.  Specify what they are learning and what kind of contribution they
-    want.
-5.  Search for relevant open issues.
-6.  Receive a small, ranked set of personalized opportunities.
-7.  Understand why each opportunity matches them.
-8.  Open the selected issue on GitHub.
+## 15. Automated Verification & Test Matrix
 
-If these steps work reliably, V1 has solved its core problem.
+Run automated test suites across the monorepo:
 
-------------------------------------------------------------------------
+```bash
+# Run all monorepo unit and integration test suites
+pnpm test
 
-## Current Engineering Status
+# Run frontend UI component tests
+cd apps/web && pnpm test
 
-### Sprint 1 --- Foundation
+# Run backend typecheck
+cd apps/api && pnpm typecheck
+```
 
-Completed.
+### Verified Test Matrix:
+- ✅ **Deterministic DMS Scoring:** Validates exact 0–100 score bounds, language weighting, and PR rate calculations.
+- ✅ **ActiveTimeTracker:** Verifies focus and visibility guards, interval timer accumulation, and listener cleanup on unmount.
+- ✅ **9-Badge Evaluation:** Verifies deterministic badge eligibility across started counts, PRs, distinct repositories, and technology sets.
+- ✅ **Profile Presentation:** Verifies 5-over-4 badge gallery layout, artwork heights, and baseline horizontal alignment.
+- ✅ **TypeScript Strictness:** Complete monorepo compilation with zero type errors.
 
-The repository foundation, monorepo, frontend/backend bootstrap, shared
-tooling, environment validation, health module, logging, error handling,
-and development standards have been established. fileciteturn5file14
+---
 
-The next implementation work should prioritize the V1 product flow
-rather than expanding repository-analysis features.
+## 16. Future Roadmap
 
-------------------------------------------------------------------------
+- [ ] **Live Webhook Ingestion:** Ingest real-time GitHub repository webhooks to index newly labeled `good first issue` opportunities within seconds.
+- [ ] **Interactive Code Walkthroughs:** Expand Graphify AST output to generate step-by-step interactive call-graph diagrams directly inside the browser.
+- [ ] **Automated Fork & Clone Assistant:** 1-click GitHub CLI command generator for instant local reproduction and branch initialization.
+- [ ] **PR Review Readiness Pre-check:** Automated static lint and test execution against draft contributions before submission to upstream maintainers.
 
-## Development Rule
+---
 
-Every feature must answer:
-
-> **Does this help a developer find and successfully approach a relevant
-> open-source contribution?**
-
-If not, it should not be part of V1.
+<p align="center">
+  <b>StackAudit</b> — Engineered for developers who build the open-source ecosystem.
+</p>

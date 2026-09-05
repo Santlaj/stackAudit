@@ -1,5 +1,6 @@
 import { Queue } from "bullmq";
 import { redis } from "../redis/index.js";
+import { env } from "../../config/env.js";
 import { logger } from "../../utils/logger.js";
 
 /**
@@ -13,6 +14,7 @@ import { logger } from "../../utils/logger.js";
  */
 export const ingestionQueue = new Queue("issue-ingestion", {
   connection: redis,
+  prefix: `{stackaudit_${env.NODE_ENV}}`,
   defaultJobOptions: {
     attempts: 3,
     backoff: {

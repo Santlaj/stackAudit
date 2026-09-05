@@ -1,8 +1,10 @@
-import { Worker, Job } from "bullmq";
+import { Worker, Job, DelayedError } from "bullmq";
 import { redis } from "../redis/index.js";
+import { env } from "../../config/env.js";
 import { logger } from "../../utils/logger.js";
 import { issueIngestionService } from "../../modules/discovery/issue-ingestion.service.js";
 import { prisma } from "../prisma/prisma.client.js";
+import { GithubRateLimitError } from "../../common/errors/index.js";
 
 /**
  * Broad set of languages to ingest during background sweep.
@@ -53,33 +55,54 @@ async function getBackgroundToken(): Promise<string | undefined> {
  * Process a broad-sweep job: iterate over all SWEEP_LANGUAGES
  * and ingest issues for each.
  */
-async function processBroadSweep(job: Job) {
+async function processBroadSweep(job: Job, token?: string) {
   logger.info("Starting broad-sweep ingestion job", { jobId: job.id });
-  const token = await getBackgroundToken();
+  const githubToken = await getBackgroundToken();
   
   let totalIngested = 0;
   let processedLangs = 0;
+  const startIndex = job.data.resumeFromLanguageIndex || 0;
 
-  for (const language of SWEEP_LANGUAGES) {
+  for (let i = startIndex; i < SWEEP_LANGUAGES.length; i++) {
+    const language = SWEEP_LANGUAGES[i];
     try {
-      const result = await issueIngestionService.ingestIssuesForLanguage(language, token);
+      const result = await issueIngestionService.ingestIssuesForLanguage(language, githubToken);
       totalIngested += result.ingestedCount;
       processedLangs++;
 
       // Report progress
-      await job.updateProgress(Math.round((processedLangs / SWEEP_LANGUAGES.length) * 100));
+      await job.updateProgress(Math.round(((i + 1) / SWEEP_LANGUAGES.length) * 100));
       
       logger.info(`Ingested ${result.ingestedCount} issues for ${language}`, {
         language,
         ingestedCount: result.ingestedCount,
-        progress: `${processedLangs}/${SWEEP_LANGUAGES.length}`,
+        progress: `${i + 1}/${SWEEP_LANGUAGES.length}`,
       });
 
       // Rate limit delay between languages
-      if (processedLangs < SWEEP_LANGUAGES.length) {
+      if (i < SWEEP_LANGUAGES.length - 1) {
         await sleep(INTER_LANGUAGE_DELAY_MS);
       }
     } catch (err) {
+      if (err instanceof GithubRateLimitError) {
+        logger.warn("Broad sweep paused due to rate limit, saving progress", {
+          language,
+          resetAt: new Date(err.resetAt).toISOString()
+        });
+        
+        await job.updateData({
+          ...job.data,
+          resumeFromLanguageIndex: i,
+        });
+        
+        const retryAt = err.resetAt + 1000;
+        if (token) {
+          await job.moveToDelayed(retryAt, token);
+          throw new DelayedError();
+        } else {
+          throw err;
+        }
+      }
       logger.warn(`Failed to ingest issues for ${language}, continuing sweep`, { error: err });
     }
   }
@@ -91,15 +114,27 @@ async function processBroadSweep(job: Job) {
 /**
  * Process a targeted ingestion job: ingest issues for a specific language.
  */
-async function processTargeted(job: Job) {
+async function processTargeted(job: Job, token?: string) {
   const { language, difficulty } = job.data;
   logger.info("Starting targeted ingestion", { language, difficulty, jobId: job.id });
   
-  const token = await getBackgroundToken();
-  const result = await issueIngestionService.ingestIssuesForLanguage(language, token, difficulty);
+  const githubToken = await getBackgroundToken();
   
-  logger.info("Targeted ingestion complete", { language, ...result });
-  return result;
+  try {
+    const result = await issueIngestionService.ingestIssuesForLanguage(language, githubToken, difficulty);
+    logger.info("Targeted ingestion complete", { language, ...result });
+    return result;
+  } catch (err) {
+    if (err instanceof GithubRateLimitError) {
+      logger.warn("Targeted ingestion paused due to rate limit", { language, resetAt: new Date(err.resetAt).toISOString() });
+      const retryAt = err.resetAt + 1000;
+      if (token) {
+        await job.moveToDelayed(retryAt, token);
+        throw new DelayedError();
+      }
+    }
+    throw err;
+  }
 }
 
 /**
@@ -108,18 +143,19 @@ async function processTargeted(job: Job) {
 export function startIngestionWorker() {
   const worker = new Worker(
     "issue-ingestion",
-    async (job: Job) => {
+    async (job: Job, token?: string) => {
       switch (job.name) {
         case "broad-sweep":
-          return processBroadSweep(job);
+          return processBroadSweep(job, token);
         case "targeted":
-          return processTargeted(job);
+          return processTargeted(job, token);
         default:
           logger.warn("Unknown job type", { jobName: job.name });
       }
     },
     {
       connection: redis,
+      prefix: `{stackaudit_${env.NODE_ENV}}`,
       concurrency: 1, // One job at a time to respect rate limits
       limiter: {
         max: 1,

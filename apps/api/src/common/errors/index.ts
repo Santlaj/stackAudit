@@ -9,4 +9,5 @@ export {
   NotFoundError,
   ConflictError,
   InternalError,
+  GithubRateLimitError,
 } from "./app-error.js";
