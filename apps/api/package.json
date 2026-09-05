@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "prisma generate && tsc -p tsconfig.json",
-    "start": "node dist/server.js",
+    "start": "prisma migrate deploy && node dist/server.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "format": "prettier --check ."
@@ -20,6 +20,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.1.0",
     "ioredis": "^5.5.0",
+    "prisma": "^6.19.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -28,7 +29,6 @@
     "@types/express": "^5.0.3",
     "@types/node": "^24.3.0",
     "eslint": "^9.39.4",
-    "prisma": "^6.19.3",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   }
