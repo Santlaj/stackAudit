@@ -1,9 +1,3 @@
-<img width="1535" height="837" alt="Screenshot 2026-09-05 232340" src="https://github.com/user-attachments/assets/34d75a4f-e600-4955-a43c-48f66c71b748" />
-<img width="1535" height="842" alt="Screenshot 2026-09-05 232542" src="https://github.com/user-attachments/assets/77214647-8ae9-4c81-b906-96450ffbac64" />
-<img width="1535" height="837" alt="Screenshot 2026-09-05 232523" src="https://github.com/user-attachments/assets/ef589653-970a-463f-ac04-6ad6f379e401" />
-<img width="1535" height="838" alt="Screenshot 2026-09-05 232455" src="https://github.com/user-attachments/assets/a0e4408c-4467-41bd-8b7d-652fae48a6bb" />
-<img width="1531" height="836" alt="Screenshot 2026-09-05 232422" src="https://github.com/user-attachments/assets/d7a0eead-f236-48fc-8663-0f0da8c0f507" />
-<img width="1535" height="840" alt="Screenshot 2026-09-05 232408" src="https://github.com/user-attachments/assets/977494f4-1986-427f-a27e-d3f9e5cb4a52" />
 # StackAudit
 
 > **AI-Native Open-Source Contribution Intelligence Platform**
