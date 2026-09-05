@@ -51,7 +51,7 @@ export class AnalysisService {
       prisma.repository_analysis.update({
         where: { id: analysis.id },
         data: { status: "FAILED", error: "Internal pipeline crash" }
-      }).catch(e => logger.error("Failed to mark analysis as FAILED", e));
+      }).catch((e: any) => logger.error("Failed to mark analysis as FAILED", e));
     });
 
     return analysis;
@@ -93,7 +93,6 @@ export class AnalysisService {
       await this.updateStatus(analysisId, "RELEVANT_FILES_IDENTIFIED");
 
       // 4. Synthesize AI Explanation
-      await this.updateStatus(analysisId, "CONTEXT_SYNTHESIZED");
       const profileStr = JSON.stringify({
         observedLanguages: match.user.profile?.observedLanguages,
         currentFocus: match.user.profile?.currentFocus,
@@ -108,13 +107,27 @@ export class AnalysisService {
         missingSignals: match.missingSignals
       });
 
-      const groqContext = await groqSynthesisService.synthesizeContext(
-        issue.title,
-        issue.body || "",
-        graphifyContext,
-        profileStr,
-        matchDataStr
-      );
+      let groqContext: any;
+      try {
+        groqContext = await groqSynthesisService.synthesizeContext(
+          issue.title,
+          issue.body || "",
+          graphifyContext,
+          profileStr,
+          matchDataStr,
+          issue.id
+        );
+        await this.updateStatus(analysisId, "CONTEXT_SYNTHESIZED");
+      } catch (err: any) {
+        logger.warn(`Groq synthesis failed, providing fallback synthesis.`, { error: err.message });
+        groqContext = {
+          whyFilesMatter: "We were unable to generate AI insights for these files at this time, but they have been identified as relevant by structural analysis.",
+          whatToUnderstandFirst: "Review the identified relevant files and the issue description.",
+          implementationApproach: "1. Reproduce the issue locally\\n2. Trace the behavior through the relevant files\\n3. Identify the required change\\n4. Implement and test your fix",
+          knowledgeGaps: []
+        };
+        await this.updateStatus(analysisId, "CONTEXT_SYNTHESIZED", { error: "AI synthesis unavailable. Showing structural context only." });
+      }
 
       // 5. Complete
       await this.updateStatus(analysisId, "COMPLETED", {

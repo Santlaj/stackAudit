@@ -101,7 +101,7 @@ export class DiscoveryService {
       topMatches = matchesFound.slice(0, 30);
 
       // ─── Upsert matches (prevents duplicates) ───
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: any) => {
         for (const matchData of topMatches) {
           if (!matchData.githubIssueId) continue;
 

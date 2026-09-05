@@ -101,7 +101,7 @@ export class DiscoveryController {
         difficulty as string
       );
       successResponse(res, {
-        matches: matches.map(m => formatMatchDto(m)),
+        matches: matches.map((m: any) => formatMatchDto(m)),
         partialCoverage
       }, "Discovery complete", 200);
     } catch (error) {
@@ -113,7 +113,7 @@ export class DiscoveryController {
     try {
       const { userId } = req.params;
       const matches = await discoveryService.getMatches(userId as string);
-      successResponse(res, matches.map(m => formatMatchDto(m)), "Matches retrieved", 200);
+      successResponse(res, matches.map((m: any) => formatMatchDto(m)), "Matches retrieved", 200);
     } catch (error) {
       next(error);
     }

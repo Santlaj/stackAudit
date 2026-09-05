@@ -9,6 +9,9 @@ const envSchema = z.object({
     .default("development"),
 
   PORT: z.coerce.number().default(4000),
+  
+  // CORS
+  FRONTEND_URL: z.string().url().default("http://localhost:3000"),
 
   // Database
   DATABASE_URL: z.string().url(),
