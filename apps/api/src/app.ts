@@ -1,5 +1,6 @@
 import express from "express";
 import cookieParser from "cookie-parser";
+import { env } from "./config/env.js";
 import healthRouter from "./modules/health/index.js";
 import { authRouter } from "./modules/auth/index.js";
 import { userRouter } from "./modules/user/index.js";
@@ -13,7 +14,7 @@ const app = express();
 
 // Global middleware
 app.use((req, res, next) => {
-  const allowedOrigins = ["http://localhost:3000", "http://localhost:3001"];
+  const allowedOrigins = ["http://localhost:3000", "http://localhost:3001", env.FRONTEND_URL];
   const origin = req.headers.origin;
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);

@@ -19,6 +19,7 @@ export interface GraphifyContext {
 
 export class GraphifyService {
   private readonly MAX_EXECUTION_TIME_MS = 60000; // 1 minute
+  private successfulGraphifyCmd: string | null = null;
 
   /**
    * Runs Graphify on a local directory to build the knowledge graph.
@@ -27,20 +28,21 @@ export class GraphifyService {
   async buildGraph(tempDir: string): Promise<void> {
     logger.info(`Building graphify knowledge graph in ${tempDir}`);
     
-    // Commands to try: graphify ., python -m graphify ., or python Windows path
-    const commandsToTry = [
-      `graphify .`,
-      `python -m graphify .`,
-      `"C:\\Users\\santl\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe" -m graphify .`,
-      `py -m graphify .`
+    // Commands to try: graphify, python -m graphify, etc
+    const commandsToTry = this.successfulGraphifyCmd ? [this.successfulGraphifyCmd] : [
+      `graphify`,
+      `python -m graphify`,
+      `python3 -m graphify`,
+      `py -m graphify`
     ];
 
     let built = false;
-    for (const cmd of commandsToTry) {
+    for (const cmdBase of commandsToTry) {
       try {
-        await execAsync(cmd, { cwd: tempDir, timeout: 15000 });
+        await execAsync(`${cmdBase} .`, { cwd: tempDir, timeout: 15000 });
         if (existsSync(join(tempDir, "graphify-out", "graph.json"))) {
-          logger.info(`Graphify build succeeded with command: ${cmd}`);
+          logger.info(`Graphify build succeeded with command: ${cmdBase} .`);
+          this.successfulGraphifyCmd = cmdBase;
           built = true;
           break;
         }
@@ -66,10 +68,12 @@ export class GraphifyService {
     if (hasGraphJson) {
       try {
         const safeTitle = issueTitle.replace(/"/g, '\\"');
-        const archResult = await execAsync(`graphify query "What is the high level architecture of this repository?"`, { cwd: tempDir, timeout: 20000 });
+        const cmdBase = this.successfulGraphifyCmd || "graphify";
+        
+        const archResult = await execAsync(`${cmdBase} query "What is the high level architecture of this repository?"`, { cwd: tempDir, timeout: 20000 });
         const architectureContext = archResult.stdout.trim() || "Architecture overview generated from graph.";
 
-        const filesResult = await execAsync(`graphify query "List the exact file paths that would need to be modified or understood to fix this issue: ${safeTitle}. Return a JSON list of objects with 'file' and 'role' (primary, supporting)."`, { cwd: tempDir, timeout: 20000 });
+        const filesResult = await execAsync(`${cmdBase} query "List the exact file paths that would need to be modified or understood to fix this issue: ${safeTitle}. Return a JSON list of objects with 'file' and 'role' (primary, supporting)."`, { cwd: tempDir, timeout: 20000 });
         const rawOutput = filesResult.stdout.trim();
         let relevantFiles: Array<{ file: string; role: string; source: string }> = [];
 

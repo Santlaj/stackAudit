@@ -1,5 +1,4 @@
 import { prisma } from "../../infrastructure/prisma/prisma.client.js";
-import { developer_profile, github_issue } from "@prisma/client";
 import { logger } from "../../utils/logger.js";
 
 // Framework → parent language(s) mapping for GitHub language filter
@@ -44,7 +43,7 @@ export class MatchingService {
    * Now actually filters by techStack (languages + frameworks) and difficulty.
    */
   async findCandidates(
-    profile: developer_profile,
+    profile: any,
     languages?: string[],
     frameworks?: string[],
     difficulty?: string
@@ -101,7 +100,7 @@ export class MatchingService {
 
     // Use raw SQL for JSON overlap on repoLanguages, falling back to repoLanguage
     // This handles both new rows (with repoLanguages JSON) and legacy rows (only repoLanguage)
-    let candidates: github_issue[];
+    let candidates: any[];
 
     if (langArray.length > 0) {
       // Build a query that checks:
@@ -147,8 +146,8 @@ export class MatchingService {
    * Now scores against the full repoLanguages JSON and framework topics.
    */
   scoreMatch(
-    profile: developer_profile,
-    issue: github_issue,
+    profile: any,
+    issue: any,
     languages?: string[],
     frameworks?: string[],
     difficulty?: string
