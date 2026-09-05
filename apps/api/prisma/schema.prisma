@@ -25,6 +25,7 @@ model user {
 
   profile       developer_profile?
   issueMatches  issue_match[]
+  dailyActivities daily_activity[]
 
   @@map("users")
 }
@@ -255,4 +256,20 @@ model github_issue {
   @@index([state])
   @@index([state, staleness, difficultyEstimate])
   @@map("github_issues")
+}
+
+// ─── Daily Active Time Tracking ─────────────────────
+
+model daily_activity {
+  id            String   @id @default(uuid())
+  userId        String
+  user          user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityDate  DateTime @db.Date
+  activeSeconds Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, activityDate])
+  @@index([userId, activityDate])
+  @@map("daily_activity")
 }

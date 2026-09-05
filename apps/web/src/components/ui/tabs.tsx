@@ -35,23 +35,43 @@ export function Tabs({
     onChange?.(id);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent, currentIndex: number) => {
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      const nextIndex = (currentIndex + 1) % tabs.length;
+      handleTabChange(tabs[nextIndex].id);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      const prevIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+      handleTabChange(tabs[prevIndex].id);
+    }
+  };
+
   const activeContent = tabs.find((t) => t.id === activeTab)?.content;
 
   return (
     <div className={cn("w-full flex flex-col space-y-4", className)}>
       {/* Tab Header Bar */}
       <div
+        role="tablist"
+        aria-orientation="horizontal"
         className={cn(
           "flex items-center gap-1 border-b border-border/60 pb-px overflow-x-auto no-scrollbar",
           tabListClassName
         )}
       >
-        {tabs.map((tab) => {
+        {tabs.map((tab, index) => {
           const isActive = tab.id === activeTab;
           return (
             <button
               key={tab.id}
+              id={`tab-${tab.id}`}
+              role="tab"
+              aria-selected={isActive}
+              aria-controls={`tabpanel-${tab.id}`}
+              tabIndex={isActive ? 0 : -1}
               onClick={() => handleTabChange(tab.id)}
+              onKeyDown={(e) => handleKeyDown(e, index)}
               type="button"
               className={cn(
                 "relative px-3.5 py-2 text-xs font-medium transition-colors flex items-center gap-2 rounded-t-sm whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-foreground/20",
@@ -88,7 +108,13 @@ export function Tabs({
       </div>
 
       {/* Tab Content Panel */}
-      <div className={cn("w-full", contentClassName)}>
+      <div 
+        id={`tabpanel-${activeTab}`}
+        role="tabpanel"
+        aria-labelledby={`tab-${activeTab}`}
+        tabIndex={0}
+        className={cn("w-full outline-none", contentClassName)}
+      >
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 4 }}

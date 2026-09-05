@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ActiveTimeTracker } from "@/components/activity/active-time-tracker";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,10 +34,11 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
-          enableSystem
+          defaultTheme="system"
+          enableSystem={true}
           disableTransitionOnChange
         >
+          <ActiveTimeTracker />
           {children}
         </ThemeProvider>
       </body>

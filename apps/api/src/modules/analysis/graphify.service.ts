@@ -1,4 +1,4 @@
-import { exec } from "child_process";
+import { exec, execSync } from "child_process";
 import { promisify } from "util";
 import { readdir, readFile, stat } from "fs/promises";
 import { join, relative, extname, basename } from "path";
@@ -6,6 +6,42 @@ import { existsSync } from "fs";
 import { logger } from "../../utils/logger.js";
 
 const execAsync = promisify(exec);
+
+function execWithTimeout(command: string, options: { cwd: string, timeout: number }): Promise<{ stdout: string, stderr: string }> {
+  return new Promise((resolve, reject) => {
+    let isTimedOut = false;
+    
+    const child = exec(command, { cwd: options.cwd }, (error, stdout, stderr) => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (isTimedOut) return;
+      if (error) {
+        reject(error);
+      } else {
+        resolve({ stdout, stderr });
+      }
+    });
+
+    const timeoutId = setTimeout(() => {
+      isTimedOut = true;
+      const err: any = new Error(`Command execution timed out after ${options.timeout}ms`);
+      err.isTimeout = true;
+      err.timeoutMs = options.timeout;
+      
+      if (child.pid) {
+        if (process.platform === 'win32') {
+          try {
+             execSync(`taskkill /pid ${child.pid} /t /f`, { stdio: 'ignore' });
+          } catch (e) {}
+        } else {
+          try {
+             child.kill('SIGKILL');
+          } catch (e) {}
+        }
+      }
+      reject(err);
+    }, options.timeout);
+  });
+}
 
 export interface GraphifyContext {
   architectureContext: string;
@@ -28,6 +64,8 @@ export class GraphifyService {
   async buildGraph(tempDir: string): Promise<void> {
     logger.info(`Building graphify knowledge graph in ${tempDir}`);
     
+    const timeoutMs = Number(process.env.GRAPHIFY_TIMEOUT_MS) || 300000;
+    
     // Commands to try: graphify, python -m graphify, etc
     const commandsToTry = this.successfulGraphifyCmd ? [this.successfulGraphifyCmd] : [
       `graphify`,
@@ -39,7 +77,7 @@ export class GraphifyService {
     let built = false;
     for (const cmdBase of commandsToTry) {
       try {
-        await execAsync(`${cmdBase} .`, { cwd: tempDir, timeout: 15000 });
+        await execWithTimeout(`${cmdBase} . --code-only`, { cwd: tempDir, timeout: timeoutMs });
         if (existsSync(join(tempDir, "graphify-out", "graph.json"))) {
           logger.info(`Graphify build succeeded with command: ${cmdBase} .`);
           this.successfulGraphifyCmd = cmdBase;
@@ -47,12 +85,18 @@ export class GraphifyService {
           break;
         }
       } catch (err: any) {
-        // Continue to next command or fallback
+        if (err.isTimeout) {
+          logger.warn(`Graphify timed out after ${err.timeoutMs}ms with command: ${cmdBase}`);
+        } else if (err.code === 'ENOENT' || (err.message && (err.message.includes('not recognized') || err.message.includes('not found') || err.message.includes('No module named')))) {
+          logger.debug(`Graphify executable not found for command: ${cmdBase}`);
+        } else {
+          logger.warn(`Graphify exited with code ${err.code || 'unknown'} for command: ${cmdBase}. Error: ${err.message ? err.message.split('\\n')[0] : 'Unknown error'}`);
+        }
       }
     }
 
     if (!built) {
-      logger.warn(`Graphify CLI not available or exited non-zero; falling back to direct repository analysis for ${tempDir}`);
+      logger.warn(`Graphify failed (timed out, not found, or error); falling back to direct repository analysis for ${tempDir}`);
     }
   }
 

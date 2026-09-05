@@ -3,6 +3,7 @@ import { requireAuth } from "../../middleware/auth.middleware.js";
 import { validate } from "../../middleware/validate.middleware.js";
 import { updateUserSchema } from "./user.validation.js";
 import { getMe, updateMe, ingestGitHubProfile, updatePreferences, getProfile } from "./user.controller.js";
+import { getUserBadges } from "../badges/badge.controller.js";
 
 const userRouter = Router();
 
@@ -11,6 +12,10 @@ userRouter.use(requireAuth);
 
 // GET  /api/users/me — Get my profile
 userRouter.get("/me", getMe);
+
+// GET  /api/users/badges — Get authenticated user's deterministic contribution badges
+userRouter.get("/badges", getUserBadges);
+userRouter.get("/profile/badges", getUserBadges);
 
 // PATCH /api/users/me — Update my profile
 userRouter.patch("/me", validate({ body: updateUserSchema }), updateMe);

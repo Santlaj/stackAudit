@@ -257,14 +257,49 @@ Extract context and provide the deeper semantic evaluation based on the above co
       throw new AppError("Failed to evaluate match and extract context", 500, "AI_EVALUATION_FAILED");
     }
   }
+  /**
+   * Trusted internal method: called exclusively by the analysis pipeline upon successful completion.
+   * Establishes the ANALYZED state while preserving user-driven states (SAVED, STARTED, PR_SUBMITTED, MERGED).
+   * Not exposed to client endpoints.
+   */
+  async establishAnalyzedStatus(issueMatchId: string) {
+    const match = await prisma.issue_match.findUnique({
+      where: { id: issueMatchId },
+      select: { id: true, status: true }
+    });
+
+    if (!match) return;
+
+    // Only transition if match is in an early uncommitted state
+    if (["DISCOVERED", "VIEWED", "EXPLORED"].includes(match.status)) {
+      await prisma.issue_match.update({
+        where: { id: issueMatchId },
+        data: { status: "ANALYZED" }
+      });
+      logger.info(`Match ${issueMatchId} transitioned to ANALYZED via trusted analysis completion.`);
+    }
+  }
+
   async toggleSaveMatch(issueMatchId: string, userId: string) {
     const match = await prisma.issue_match.findUnique({
-      where: { id: issueMatchId }
+      where: { id: issueMatchId },
+      include: { analysis: true, githubIssue: true }
     });
     if (!match) throw new AppError("Match not found", 404, "MATCH_NOT_FOUND");
     if (match.userId !== userId) throw new AppError("Unauthorized", 403, "UNAUTHORIZED");
 
-    const newStatus = match.status === "SAVED" ? "DISCOVERED" : "SAVED";
+    // Protect active contribution lifecycle states from accidental erasure
+    if (["STARTED", "PR_SUBMITTED", "MERGED"].includes(match.status)) {
+      return match;
+    }
+
+    let newStatus: string;
+    if (match.status === "SAVED") {
+      // If it was previously analyzed, restore ANALYZED; otherwise DISCOVERED
+      newStatus = match.analysis?.status === "COMPLETED" ? "ANALYZED" : "DISCOVERED";
+    } else {
+      newStatus = "SAVED";
+    }
 
     return prisma.issue_match.update({
       where: { id: issueMatchId },
@@ -285,6 +320,11 @@ Extract context and provide the deeper semantic evaluation based on the above co
   }
 
   async updateMatchStatus(issueMatchId: string, userId: string, newStatus: string) {
+    // Prevent clients from manufacturing internal system-derived statuses
+    if (newStatus === "ANALYZED") {
+      throw new AppError("Cannot manually set system-derived status ANALYZED", 400, "INVALID_STATUS");
+    }
+
     const match = await prisma.issue_match.findUnique({
       where: { id: issueMatchId }
     });
@@ -292,11 +332,20 @@ Extract context and provide the deeper semantic evaluation based on the above co
     if (!match) throw new AppError("Match not found", 404, "MATCH_NOT_FOUND");
     if (match.userId !== userId) throw new AppError("Unauthorized", 403, "UNAUTHORIZED");
 
+    // Idempotent no-op if already in requested status (e.g. repeated start clicks)
+    if (match.status === newStatus) {
+      return prisma.issue_match.findUnique({
+        where: { id: issueMatchId },
+        include: { githubIssue: true }
+      });
+    }
+
     const validTransitions: Record<string, string[]> = {
-      "DISCOVERED": ["EXPLORED", "VIEWED", "SAVED"],
+      // DISCOVERED -> STARTED is valid when user starts directly from the Analyze workspace (Flow G)
+      "DISCOVERED": ["EXPLORED", "VIEWED", "SAVED", "STARTED"],
       "EXPLORED": ["SAVED", "STARTED"],
       "VIEWED": ["SAVED", "STARTED"],
-      "SAVED": ["DISCOVERED", "ANALYZED", "STARTED"],
+      "SAVED": ["DISCOVERED", "STARTED"], // ANALYZED removed: client cannot manufacture ANALYZED
       "ANALYZED": ["STARTED", "SAVED"],
       "STARTED": ["SAVED", "PR_SUBMITTED"], // Can unsave to drop it
       "PR_SUBMITTED": ["MERGED"],

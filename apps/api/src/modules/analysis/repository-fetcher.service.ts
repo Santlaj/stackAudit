@@ -9,7 +9,7 @@ import { AppError } from "../../common/errors/index.js";
 const execAsync = promisify(exec);
 
 export class RepositoryFetcherService {
-  private readonly MAX_CLONE_TIME_MS = 60000; // 60 seconds
+  private readonly MAX_CLONE_TIME_MS = 300000; // 5 minutes
 
   /**
    * Clones a repository into a temporary directory.
@@ -35,15 +35,14 @@ export class RepositoryFetcherService {
 
     try {
       if (commitSha) {
-        // To fetch a specific commit efficiently:
-        // git init -> git remote add -> git fetch --depth 1 origin <sha> -> git checkout FETCH_HEAD
-        await execAsync(`git init`, { cwd: tempDir, timeout: 5000 });
-        await execAsync(`git remote add origin ${repoUrl}`, { cwd: tempDir, timeout: 5000 });
-        await execAsync(`git fetch --depth 1 origin ${commitSha}`, { cwd: tempDir, timeout: this.MAX_CLONE_TIME_MS });
-        await execAsync(`git checkout FETCH_HEAD`, { cwd: tempDir, timeout: 10000 });
+        await execAsync(`git init`, { cwd: tempDir, timeout: 10000, maxBuffer: 10 * 1024 * 1024 });
+        await execAsync(`git config core.longpaths true`, { cwd: tempDir, timeout: 5000 });
+        await execAsync(`git remote add origin ${repoUrl}`, { cwd: tempDir, timeout: 10000, maxBuffer: 10 * 1024 * 1024 });
+        await execAsync(`git fetch --depth 1 origin ${commitSha}`, { cwd: tempDir, timeout: this.MAX_CLONE_TIME_MS, maxBuffer: 50 * 1024 * 1024 });
+        await execAsync(`git checkout FETCH_HEAD`, { cwd: tempDir, timeout: 60000, maxBuffer: 50 * 1024 * 1024 });
       } else {
         // Simple shallow clone
-        await execAsync(`git clone --depth 1 ${repoUrl} .`, { cwd: tempDir, timeout: this.MAX_CLONE_TIME_MS });
+        await execAsync(`git -c core.longpaths=true clone --depth 1 ${repoUrl} .`, { cwd: tempDir, timeout: this.MAX_CLONE_TIME_MS, maxBuffer: 50 * 1024 * 1024 });
       }
       
       return tempDir;
@@ -63,12 +62,12 @@ export class RepositoryFetcherService {
     try {
       const stats = await stat(tempDir);
       if (stats.isDirectory()) {
-        await rm(tempDir, { recursive: true, force: true });
+        await rm(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 });
         logger.info(`Cleaned up temporary directory: ${tempDir}`);
       }
     } catch (error: any) {
       if (error.code !== 'ENOENT') {
-        logger.error(`Failed to clean up directory ${tempDir}`, { error: error.message });
+        logger.warn(`Failed to clean up directory ${tempDir} after 5 attempts.`, { error: error.message, code: error.code });
       }
     }
   }
