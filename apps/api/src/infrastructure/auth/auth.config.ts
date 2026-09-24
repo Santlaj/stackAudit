@@ -29,7 +29,7 @@ export const auth = betterAuth({
     },
   },
 
-  trustedOrigins: ["http://localhost:3000", "http://localhost:3001"],
+  trustedOrigins: ["http://localhost:3000", "http://localhost:3001", env.FRONTEND_URL],
 
   session: {
     // Session token lives for 7 days.

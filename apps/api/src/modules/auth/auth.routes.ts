@@ -13,7 +13,7 @@ authRouter.get("/login/github", async (req, res, next) => {
     const result = await auth.api.signInSocial({
       body: {
         provider: "github",
-        callbackURL: "http://localhost:3000",
+        callbackURL: env.FRONTEND_URL,
       },
       headers: req.headers as unknown as Headers,
       returnHeaders: true,
@@ -33,7 +33,7 @@ authRouter.get("/login/github", async (req, res, next) => {
     if (redirectUrl) {
       res.redirect(redirectUrl);
     } else {
-      res.redirect("http://localhost:3000");
+      res.redirect(env.FRONTEND_URL);
     }
   } catch (error) {
     next(error);
