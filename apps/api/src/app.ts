@@ -60,6 +60,12 @@ app.use("/api/github", githubRoutes);
 app.use("/api/discovery", discoveryRoutes);
 app.use("/api/analysis", analysisRoutes);
 
+// Redirect root requests to frontend
+app.get("/", (req, res) => {
+  const query = req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "";
+  res.redirect(`${env.FRONTEND_URL.replace(/\/$/, "")}${query}`);
+});
+
 // Error handling (must be last)
 app.use(notFoundHandler);
 app.use(errorHandler);
