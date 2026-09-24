@@ -21,18 +21,52 @@ authRouter.get("/login/github", async (req, res, next) => {
       }
     });
 
+    if (req.ip && !headers.has("x-forwarded-for")) {
+      headers.set("x-forwarded-for", req.ip);
+    }
+
+    const rawCallback = typeof req.query.callbackURL === "string" ? req.query.callbackURL : undefined;
+    let targetCallbackUrl = env.FRONTEND_URL;
+    if (rawCallback) {
+      try {
+        const parsed = new URL(rawCallback);
+        const frontendHostname = new URL(env.FRONTEND_URL).hostname;
+        const isAllowed = 
+          parsed.hostname === frontendHostname ||
+          parsed.hostname === "stackaudit.santlaj.in" ||
+          parsed.hostname === "localhost" ||
+          parsed.hostname === "127.0.0.1" ||
+          parsed.hostname.endsWith(".vercel.app");
+        if (isAllowed) {
+          targetCallbackUrl = rawCallback;
+        }
+      } catch {
+        targetCallbackUrl = env.FRONTEND_URL;
+      }
+    }
+
     const result = await auth.api.signInSocial({
       body: {
         provider: "github",
-        callbackURL: env.FRONTEND_URL,
+        callbackURL: targetCallbackUrl,
       },
       headers,
       returnHeaders: true,
     });
 
     if (result.headers) {
+      const setCookies = typeof (result.headers as any).getSetCookie === "function"
+        ? (result.headers as any).getSetCookie()
+        : result.headers.get("set-cookie")
+          ? [result.headers.get("set-cookie")!]
+          : [];
+      for (const cookie of setCookies) {
+        res.append("Set-Cookie", cookie);
+      }
       result.headers.forEach((value, key) => {
-        res.setHeader(key, value);
+        if (key.toLowerCase() !== "set-cookie") {
+          res.setHeader(key, value);
+        }
       });
     }
 
@@ -44,7 +78,7 @@ authRouter.get("/login/github", async (req, res, next) => {
     if (redirectUrl) {
       res.redirect(redirectUrl);
     } else {
-      res.redirect(env.FRONTEND_URL);
+      res.redirect(targetCallbackUrl);
     }
   } catch (error) {
     next(error);
@@ -69,6 +103,10 @@ authRouter.use(async (req, res, next) => {
       }
     });
 
+    if (req.ip && !headers.has("x-forwarded-for")) {
+      headers.set("x-forwarded-for", req.ip);
+    }
+
     let body: string | undefined = undefined;
     if (!["GET", "HEAD"].includes(req.method) && req.body && Object.keys(req.body).length > 0) {
       body = JSON.stringify(req.body);
@@ -85,7 +123,11 @@ authRouter.use(async (req, res, next) => {
     if (response) {
       res.status(response.status);
       
-      const setCookies = response.headers.getSetCookie();
+      const setCookies = typeof (response.headers as any).getSetCookie === "function"
+        ? (response.headers as any).getSetCookie()
+        : response.headers.get("set-cookie")
+          ? [response.headers.get("set-cookie")!]
+          : [];
       for (const cookie of setCookies) {
         res.append("Set-Cookie", cookie);
       }

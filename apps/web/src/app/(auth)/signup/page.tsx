@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { signUp, signIn } from "@/lib/auth-client";
+import { API_BASE } from "@/lib/api";
 import { Github, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -18,7 +19,11 @@ export default function SignupPage() {
 
   const handleSocialSignup = async (provider: "github" | "google") => {
     setError(null);
-    if (provider === "github") setLoadingGithub(true);
+    if (provider === "github") {
+      setLoadingGithub(true);
+      window.location.href = `${API_BASE}/api/auth/login/github?callbackURL=${encodeURIComponent(window.location.origin + "/")}`;
+      return;
+    }
 
     try {
       const { data, error: authError } = await signIn.social({

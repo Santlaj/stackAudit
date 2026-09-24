@@ -120,7 +120,7 @@ export function Topbar({ className, onMenuClick, children, ...props }: TopbarPro
           </div>
         ) : (
           <button 
-            onClick={() => signIn.social({ provider: "github" })}
+            onClick={() => router.push("/login")}
             className="text-sm font-medium hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             Log In
