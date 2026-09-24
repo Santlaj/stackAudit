@@ -35,7 +35,8 @@ export const auth = betterAuth({
     env.FRONTEND_URL,
     env.FRONTEND_URL.replace(/\/$/, ""),
     "https://*.vercel.app",
-    "https://stackauditvercel-web-psi.vercel.app",
+    "https://stackaudit.santlaj.in",
+    "http://stackaudit.santlaj.in",
   ],
 
   session: {

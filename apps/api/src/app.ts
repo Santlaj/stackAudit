@@ -18,10 +18,18 @@ app.set("trust proxy", 1);
 // Global middleware
 app.use((req, res, next) => {
   const normalizedFrontendUrl = env.FRONTEND_URL.replace(/\/$/, "");
-  const allowedOrigins = ["http://localhost:3000", "http://localhost:3001", env.FRONTEND_URL, normalizedFrontendUrl];
+  const allowedOrigins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    env.FRONTEND_URL,
+    normalizedFrontendUrl,
+    "https://stackaudit.santlaj.in",
+    "http://stackaudit.santlaj.in",
+  ];
   const origin = req.headers.origin;
   const isVercelDomain = typeof origin === "string" && (origin.endsWith(".vercel.app") || origin.includes("vercel.app"));
-  if (origin && (allowedOrigins.includes(origin) || allowedOrigins.includes(`${origin}/`) || isVercelDomain)) {
+  const isStackAuditSubdomain = typeof origin === "string" && origin.includes("stackaudit.santlaj.in");
+  if (origin && (allowedOrigins.includes(origin) || allowedOrigins.includes(`${origin}/`) || isVercelDomain || isStackAuditSubdomain)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
