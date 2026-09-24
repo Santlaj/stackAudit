@@ -7,8 +7,17 @@ import type { SessionData } from "./auth.types.js";
 export const getSession = async (
   req: Request,
 ): Promise<SessionData | null> => {
+  const headers = new Headers();
+  Object.entries(req.headers).forEach(([key, val]) => {
+    if (Array.isArray(val)) {
+      val.forEach(v => headers.append(key, v));
+    } else if (val) {
+      headers.set(key, val);
+    }
+  });
+
   const session = await auth.api.getSession({
-    headers: req.headers as unknown as Headers,
+    headers,
   });
 
   return session as SessionData | null;

@@ -101,11 +101,11 @@ export class DiscoveryService {
       topMatches = matchesFound.slice(0, 30);
 
       // ─── Upsert matches (prevents duplicates) ───
-      await prisma.$transaction(async (tx: any) => {
-        for (const matchData of topMatches) {
-          if (!matchData.githubIssueId) continue;
+      await Promise.all(
+        topMatches.map(async (matchData) => {
+          if (!matchData.githubIssueId) return;
 
-          const existing = await tx.issue_match.findFirst({
+          const existing = await prisma.issue_match.findFirst({
             where: {
               userId: matchData.userId,
               githubIssueId: matchData.githubIssueId,
@@ -113,7 +113,7 @@ export class DiscoveryService {
           });
 
           if (existing) {
-            await tx.issue_match.update({
+            await prisma.issue_match.update({
               where: { id: existing.id },
               data: {
                 // Refresh scoring data but don't reset SAVED/VIEWED status
@@ -130,12 +130,12 @@ export class DiscoveryService {
               }
             });
           } else {
-            await tx.issue_match.create({
+            await prisma.issue_match.create({
               data: matchData
             });
           }
-        }
-      });
+        })
+      );
       
     } catch (err) {
       logger.error("Failed to execute discovery matching", { userId, error: err });
