@@ -35,13 +35,7 @@ export const auth = betterAuth({
     env.FRONTEND_URL,
     env.FRONTEND_URL.replace(/\/$/, ""),
     "https://*.vercel.app",
-    (request: Request) => {
-      const origin = request.headers.get("origin");
-      if (origin && (origin.endsWith(".vercel.app") || origin.includes("localhost"))) {
-        return [origin];
-      }
-      return [];
-    },
+    "https://stackauditvercel-web-psi.vercel.app",
   ],
 
   session: {
