@@ -12,6 +12,9 @@ import { requestLogger } from "./middleware/request-logger.middleware.js";
 
 const app = express();
 
+// Trust reverse proxy (Render, Vercel, Cloudflare) so req.protocol and client IP are accurate
+app.set("trust proxy", 1);
+
 // Global middleware
 app.use((req, res, next) => {
   const normalizedFrontendUrl = env.FRONTEND_URL.replace(/\/$/, "");
@@ -21,8 +24,13 @@ app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+  const requestHeaders = req.headers["access-control-request-headers"];
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    typeof requestHeaders === "string" ? requestHeaders : "Content-Type,Authorization,Cookie,X-Requested-With"
+  );
   res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Expose-Headers", "Set-Cookie");
   if (req.method === "OPTIONS") {
     res.sendStatus(204);
     return;

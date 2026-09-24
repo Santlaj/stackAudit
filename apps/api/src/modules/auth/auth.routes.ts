@@ -11,12 +11,22 @@ authRouter.get("/session", getCurrentSession);
 // Direct GET endpoint for initiating GitHub OAuth login directly from browser links
 authRouter.get("/login/github", async (req, res, next) => {
   try {
+    const headers = new Headers();
+    Object.entries(req.headers).forEach(([key, val]) => {
+      if (key.toLowerCase() === "content-length") return;
+      if (Array.isArray(val)) {
+        val.forEach(v => headers.append(key, v));
+      } else if (val) {
+        headers.set(key, val);
+      }
+    });
+
     const result = await auth.api.signInSocial({
       body: {
         provider: "github",
         callbackURL: env.FRONTEND_URL,
       },
-      headers: req.headers as unknown as Headers,
+      headers,
       returnHeaders: true,
     });
 
@@ -44,7 +54,8 @@ authRouter.get("/login/github", async (req, res, next) => {
 // Delegate all other auth endpoints to Better Auth using native auth.handler
 authRouter.use(async (req, res, next) => {
   try {
-    const protocol = req.protocol || "http";
+    const forwardedProto = req.headers["x-forwarded-proto"];
+    const protocol = (typeof forwardedProto === "string" ? forwardedProto.split(",")[0].trim() : req.protocol) || "https";
     const host = req.get("host") || "localhost:4000";
     const fullUrl = `${protocol}://${host}${req.originalUrl}`;
 
