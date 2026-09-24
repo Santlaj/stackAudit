@@ -14,9 +14,10 @@ const app = express();
 
 // Global middleware
 app.use((req, res, next) => {
-  const allowedOrigins = ["http://localhost:3000", "http://localhost:3001", env.FRONTEND_URL];
+  const normalizedFrontendUrl = env.FRONTEND_URL.replace(/\/$/, "");
+  const allowedOrigins = ["http://localhost:3000", "http://localhost:3001", env.FRONTEND_URL, normalizedFrontendUrl];
   const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && (allowedOrigins.includes(origin) || allowedOrigins.includes(`${origin}/`))) {
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
