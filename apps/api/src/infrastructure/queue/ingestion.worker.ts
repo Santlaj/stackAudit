@@ -13,8 +13,6 @@ import { GithubRateLimitError } from "../../common/errors/index.js";
 const SWEEP_LANGUAGES = [
   "TypeScript", "JavaScript", "Python", "Java", "C", "C++", "C#",
   "Go", "Rust", "Ruby", "PHP", "Swift", "Kotlin", "Dart",
-  "Scala", "Shell", "Lua", "R", "Elixir", "Haskell", "Perl",
-  "Objective-C", "HTML", "CSS", "Vue", "Svelte",
 ];
 
 /**
