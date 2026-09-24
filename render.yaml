@@ -2,8 +2,8 @@
 services:
   - type: web
     name: stackaudit-api
-    env: node
-    buildCommand: pnpm --filter api build
+    runtime: node
+    buildCommand: pnpm install --prod=false && pnpm --filter api build
     startCommand: pnpm --filter api start
     envVars:
       - key: NODE_ENV
