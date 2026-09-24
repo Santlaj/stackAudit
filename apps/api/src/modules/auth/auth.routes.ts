@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { auth } from "../../infrastructure/auth/index.js";
 import { getCurrentSession } from "./auth.controller.js";
+import { env } from "../../config/env.js";
 
 const authRouter = Router();
 
