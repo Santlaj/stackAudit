@@ -34,6 +34,14 @@ export const auth = betterAuth({
     "http://localhost:3001",
     env.FRONTEND_URL,
     env.FRONTEND_URL.replace(/\/$/, ""),
+    "https://*.vercel.app",
+    (request: Request) => {
+      const origin = request.headers.get("origin");
+      if (origin && (origin.endsWith(".vercel.app") || origin.includes("localhost"))) {
+        return [origin];
+      }
+      return [];
+    },
   ],
 
   session: {
@@ -44,6 +52,12 @@ export const auth = betterAuth({
     cookieCache: {
       enabled: true,
       maxAge: 60 * 5, // 5 minutes
+    },
+  },
+
+  advanced: {
+    ipAddress: {
+      ipAddressHeaders: ["x-forwarded-for", "cf-connecting-ip", "x-real-ip"],
     },
   },
 });

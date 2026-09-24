@@ -20,7 +20,8 @@ app.use((req, res, next) => {
   const normalizedFrontendUrl = env.FRONTEND_URL.replace(/\/$/, "");
   const allowedOrigins = ["http://localhost:3000", "http://localhost:3001", env.FRONTEND_URL, normalizedFrontendUrl];
   const origin = req.headers.origin;
-  if (origin && (allowedOrigins.includes(origin) || allowedOrigins.includes(`${origin}/`))) {
+  const isVercelDomain = typeof origin === "string" && (origin.endsWith(".vercel.app") || origin.includes("vercel.app"));
+  if (origin && (allowedOrigins.includes(origin) || allowedOrigins.includes(`${origin}/`) || isVercelDomain)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
