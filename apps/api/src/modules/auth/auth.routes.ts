@@ -94,6 +94,8 @@ authRouter.get("/session", getCurrentSession);
 // GET endpoint for initiating GitHub OAuth login via direct browser navigation.
 // Constructs a synthetic POST to Better Auth's native /sign-in/social endpoint
 // so that the entire signed-cookie lifecycle is handled by auth.handler().
+// Better Auth's POST endpoint returns JSON { url, redirect: true }, so we
+// forward the Set-Cookie headers and perform an actual browser redirect.
 authRouter.get("/login/github", async (req, res, next) => {
   try {
     const targetCallbackUrl = validateCallbackUrl(
@@ -127,7 +129,39 @@ authRouter.get("/login/github", async (req, res, next) => {
       return;
     }
 
-    await pipeWebResponse(response, res);
+    // Forward all Set-Cookie headers (includes the signed state cookie)
+    const setCookies =
+      typeof (response.headers as any).getSetCookie === "function"
+        ? (response.headers as any).getSetCookie()
+        : response.headers.get("set-cookie")
+          ? [response.headers.get("set-cookie")!]
+          : [];
+    for (const cookie of setCookies) {
+      res.append("Set-Cookie", cookie);
+    }
+
+    // Better Auth's POST /sign-in/social returns JSON { url, redirect: true }
+    // Extract the OAuth URL and perform an actual browser redirect
+    const text = await response.text();
+    try {
+      const json = JSON.parse(text);
+      if (json.url) {
+        res.redirect(json.url);
+        return;
+      }
+    } catch {
+      // Not JSON — check if it's already a redirect response
+    }
+
+    // Fallback: if response is a 3xx redirect, follow the Location header
+    const location = response.headers.get("location");
+    if (location) {
+      res.redirect(location);
+      return;
+    }
+
+    // Last resort: redirect to frontend
+    res.redirect(targetCallbackUrl);
   } catch (error) {
     next(error);
   }
