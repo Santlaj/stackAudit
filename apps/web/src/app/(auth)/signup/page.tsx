@@ -33,7 +33,6 @@ export default function SignupPage() {
       if (authError) throw new Error(authError.message || "Failed to sign up");
     } catch (err: any) {
       setError(err.message || `Failed to sign up with ${provider}.`);
-      if (provider === "github") setLoadingGithub(false);
     }
   };
 

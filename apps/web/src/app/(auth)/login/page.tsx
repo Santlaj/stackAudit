@@ -32,7 +32,6 @@ export default function LoginPage() {
       if (authError) throw new Error(authError.message || "Failed to sign in");
     } catch (err: any) {
       setError(err.message || `Failed to sign in with ${provider}.`);
-      if (provider === "github") setLoadingGithub(false);
     }
   };
 
