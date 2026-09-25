@@ -25,11 +25,13 @@ app.use((req, res, next) => {
     normalizedFrontendUrl,
     "https://stackaudit.santlaj.in",
     "http://stackaudit.santlaj.in",
+    "https://api.stackaudit.santlaj.in",
+    "http://api.stackaudit.santlaj.in",
   ];
   const origin = req.headers.origin;
   const isVercelDomain = typeof origin === "string" && (origin.endsWith(".vercel.app") || origin.includes("vercel.app"));
-  const isStackAuditSubdomain = typeof origin === "string" && origin.includes("stackaudit.santlaj.in");
-  if (origin && (allowedOrigins.includes(origin) || allowedOrigins.includes(`${origin}/`) || isVercelDomain || isStackAuditSubdomain)) {
+  const isSantlajDomain = typeof origin === "string" && origin.includes("santlaj.in");
+  if (origin && (allowedOrigins.includes(origin) || allowedOrigins.includes(`${origin}/`) || isVercelDomain || isSantlajDomain)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");

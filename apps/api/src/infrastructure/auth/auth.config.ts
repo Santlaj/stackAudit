@@ -37,6 +37,8 @@ export const auth = betterAuth({
     "https://*.vercel.app",
     "https://stackaudit.santlaj.in",
     "http://stackaudit.santlaj.in",
+    "https://api.stackaudit.santlaj.in",
+    "http://api.stackaudit.santlaj.in",
   ],
 
   session: {
@@ -52,8 +54,12 @@ export const auth = betterAuth({
 
   advanced: {
     useSecureCookies: true,
+    crossSubDomainCookies: {
+      enabled: env.NODE_ENV === "production",
+      domain: ".santlaj.in",
+    },
     defaultCookieAttributes: {
-      sameSite: "none",
+      sameSite: env.NODE_ENV === "production" ? "lax" : "none",
       secure: true,
     },
     ipAddress: {
