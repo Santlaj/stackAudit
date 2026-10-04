@@ -50,7 +50,7 @@ export default function HomePage() {
           <nav className="hidden md:flex items-center gap-5 text-sm font-medium text-muted-foreground">
             <Link href="/" className="text-foreground">Home</Link>
             <Link href="/discover" className="hover:text-foreground transition-colors">Discover</Link>
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors flex items-center gap-1.5">
+            <a href="https://github.com/Santlaj/stackAudit" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors flex items-center gap-1.5">
               GitHub <Github className="w-3.5 h-3.5" />
             </a>
           </nav>
@@ -69,11 +69,13 @@ export default function HomePage() {
       <section className="pt-24 pb-16 px-4 sm:px-6 max-w-5xl mx-auto w-full">
         <div className="max-w-3xl space-y-6">
           <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight text-foreground leading-[1.1]">
-            Open-Source <br />
-            <span className="text-muted-foreground">Contribution Intelligence</span>
+            StackAudit <br />
+            <span className="text-muted-foreground text-3xl sm:text-4xl font-normal block mt-1">
+              AI-Powered Open-Source Contribution Intelligence
+            </span>
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-2xl">
-            StackAudit matches developers with open-source issues and explains what it takes to contribute. 
+            StackAudit is an AI-powered GitHub repository intelligence platform that matches developers with open-source issues and explains what it takes to contribute. 
             Stop guessing where to start. Get verified compatibility, target file guidance, and architectural context before you write a single line of code.
           </p>
           <div className="flex flex-wrap items-center gap-4 pt-2">
