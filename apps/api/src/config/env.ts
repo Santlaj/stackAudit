@@ -34,8 +34,10 @@ const envSchema = z.object({
 
   // AI Integration
   GEMINI_API_KEY: z.string().min(1).optional(),
-  GROQ_API_KEY: z.string().min(1),
-  GROQ_MODEL: z.string().default("openai/gpt-oss-120b"),
+  GEMINI_MODEL: z.string().default("gemini-1.5-flash"),
+  GROQ_API_KEY: z.string().min(1).optional(),
+  GROQ_API_KEYS: z.string().optional(),
+  GROQ_MODEL: z.string().default("qwen/qwen3.6-27b"),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

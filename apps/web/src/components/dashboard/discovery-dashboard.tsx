@@ -167,14 +167,6 @@ export function DiscoveryDashboard() {
       }
       if (p) {
         setProfile(p);
-        
-        // Pre-select observed languages
-        const observed = p.observedLanguages || [];
-        const initialLangs = observed.filter((l: string) => AVAILABLE_LANGUAGES.includes(l));
-        setSelectedLanguages(initialLangs);
-
-        const m = await getMatches(userId).catch(() => []);
-        setMatches(m);
       }
     } catch (err: any) {
       console.error(err);
@@ -204,13 +196,21 @@ export function DiscoveryDashboard() {
     setSelectedMatch(null);
     try {
       setPartialCoverage(false);
-      setIsFiltersExpanded(false);
       setVisibleCount(10);
       const res = await discoverIssues(session.user.id, selectedLanguages, selectedFrameworks, difficulty);
-      setMatches(res.matches || []);
+      const foundMatches = res.matches || [];
+      setMatches(foundMatches);
       setPartialCoverage(res.partialCoverage || false);
+
+      // Only minimize the discovery parameters if issues/repos are actually discovered!
+      if (foundMatches.length > 0) {
+        setIsFiltersExpanded(false);
+      } else {
+        setIsFiltersExpanded(true);
+      }
     } catch (err: any) {
       setError("Failed to discover issues. Check backend logs.");
+      setIsFiltersExpanded(true);
     } finally {
       setLoading(false);
     }

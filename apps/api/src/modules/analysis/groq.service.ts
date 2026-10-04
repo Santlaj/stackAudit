@@ -285,7 +285,14 @@ ${graphifyContext.rawOutput.substring(0, 1000)}
         temperature: 0.1, // Low temperature to prevent hallucinations
       });
 
-      const jsonStr = result.content.replace(/```json/g, "").replace(/```/g, "").trim();
+      let jsonStr = result.content.trim();
+      const firstBrace = jsonStr.indexOf("{");
+      const lastBrace = jsonStr.lastIndexOf("}");
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+      } else {
+        jsonStr = jsonStr.replace(/```json/g, "").replace(/```/g, "").trim();
+      }
       const parsed = JSON.parse(jsonStr);
 
       // Server-side quality check
