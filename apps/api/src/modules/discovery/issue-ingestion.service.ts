@@ -46,6 +46,8 @@ export class IssueIngestionService {
       } catch (err) {
         logger.warn("Failed to search with label set", { language, labels, error: err });
       }
+      // Pacing to stay comfortably under GitHub's 30 req/min search API rate limit
+      await new Promise((r) => setTimeout(r, 2000));
     }
 
     const uniqueIssues = this.deduplicateIssues(allIssues);
@@ -285,9 +287,50 @@ export class IssueIngestionService {
 
     for (const issue of uniqueIssues) {
       if (!repoContextCache.has(issue.repository)) {
+        // Reuse context if this repository was already indexed in our database
+        const existingInDb = await prisma.github_issue.findFirst({
+          where: {
+            repository: issue.repository,
+            repoDescription: { not: null },
+          },
+          select: {
+            repoLanguage: true,
+            repoLanguages: true,
+            repoTopics: true,
+            repoDescription: true,
+            repoStars: true,
+            repoOpenIssues: true,
+            repoLastPushedAt: true,
+            repoLastUpdatedAt: true,
+            repoPrAcceptanceRate: true,
+            repoActivityLevel: true,
+          },
+        });
+
+        if (existingInDb) {
+          repoContextCache.set(issue.repository, {
+            language: existingInDb.repoLanguage,
+            languages: (existingInDb.repoLanguages as Record<string, number>) || {},
+            topics: existingInDb.repoTopics || [],
+            description: existingInDb.repoDescription,
+            stars: existingInDb.repoStars ?? 0,
+            openIssues: existingInDb.repoOpenIssues ?? 0,
+            pushedAt: existingInDb.repoLastPushedAt,
+            updatedAt: existingInDb.repoLastUpdatedAt,
+            prAcceptanceRate: existingInDb.repoPrAcceptanceRate,
+            activityLevel: existingInDb.repoActivityLevel || "active",
+          });
+          continue;
+        }
+
         const [owner, repo] = issue.repository.split("/");
-        const context = await githubService.getRepositoryContext(owner, repo, token);
-        repoContextCache.set(issue.repository, context);
+        try {
+          const context = await githubService.getRepositoryContext(owner, repo, token);
+          repoContextCache.set(issue.repository, context);
+        } catch {
+          // graceful fallback so whole batch is not rejected
+        }
+        await new Promise((r) => setTimeout(r, 400)); // small delay between repo calls
       }
     }
 

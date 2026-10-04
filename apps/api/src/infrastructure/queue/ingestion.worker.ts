@@ -21,7 +21,7 @@ const SWEEP_LANGUAGES = [
  * Each language does ~3 searches (3 label sets), so ~2 seconds between languages
  * keeps us well under the limit.
  */
-const INTER_LANGUAGE_DELAY_MS = 3000;
+const INTER_LANGUAGE_DELAY_MS = 5000;
 
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
