@@ -179,10 +179,20 @@ export class AnalysisService {
 
   private async updateStatus(analysisId: string, status: string, additionalData: any = {}) {
     logger.info(`Analysis ${analysisId} status: ${status}`);
-    await prisma.repository_analysis.update({
-      where: { id: analysisId },
-      data: { status, ...additionalData },
-    });
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await prisma.repository_analysis.update({
+          where: { id: analysisId },
+          data: { status, ...additionalData },
+        });
+        return;
+      } catch (err: any) {
+        logger.warn(`Failed to update status on attempt ${attempt}: ${err.message}`);
+        if (attempt === 3) throw err;
+        await prisma.$connect().catch(() => {});
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
   }
 
   private async runAnalysisPipeline(analysisId: string, match: any) {
@@ -196,19 +206,34 @@ export class AnalysisService {
     let tempDir = null;
 
     try {
-      // 1. Fetch Repository
+      // 1. Fetch Repository (with graceful fallback for massive repos like Kibana)
       await this.updateStatus(analysisId, "REPOSITORY_LOADING");
-      tempDir = await repositoryFetcherService.fetchRepository(owner, repo);
-      await this.updateStatus(analysisId, "REPOSITORY_LOADED");
+      try {
+        tempDir = await repositoryFetcherService.fetchRepository(owner, repo);
+        await this.updateStatus(analysisId, "REPOSITORY_LOADED");
+      } catch (fetchErr: any) {
+        logger.warn(`Git clone failed or repo too large for ${owner}/${repo}: ${fetchErr.message}. Proceeding with issue-level semantic analysis.`);
+      }
 
-      // 2. Build Graph
-      await this.updateStatus(analysisId, "GRAPH_BUILDING");
-      await graphifyService.buildGraph(tempDir);
-      await this.updateStatus(analysisId, "ARCHITECTURE_ANALYZED");
+      // 2. Build Graph & Extract Context (or graceful fallback)
+      let graphifyContext = {
+        architectureContext: `Repository: ${owner}/${repo}`,
+        relevantFiles: [] as any[],
+        rawOutput: "Repository source analysis conducted at issue scope.",
+      };
 
-      // 3. Extract Factual Context
-      const graphifyContext = await graphifyService.extractContext(tempDir, issue.title, issue.body || "");
-      await this.updateStatus(analysisId, "RELEVANT_FILES_IDENTIFIED");
+      if (tempDir) {
+        try {
+          await this.updateStatus(analysisId, "GRAPH_BUILDING");
+          await graphifyService.buildGraph(tempDir);
+          await this.updateStatus(analysisId, "ARCHITECTURE_ANALYZED");
+
+          graphifyContext = await graphifyService.extractContext(tempDir, issue.title, issue.body || "");
+          await this.updateStatus(analysisId, "RELEVANT_FILES_IDENTIFIED");
+        } catch (graphErr: any) {
+          logger.warn(`Graph building failed for ${owner}/${repo}: ${graphErr.message}, proceeding with fallback context.`);
+        }
+      }
 
       // 4. Synthesize AI Explanation via Fallback Chain
       const profileStr = JSON.stringify({

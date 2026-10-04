@@ -9,7 +9,7 @@ import { AppError } from "../../common/errors/index.js";
 const execAsync = promisify(exec);
 
 export class RepositoryFetcherService {
-  private readonly MAX_CLONE_TIME_MS = 300000; // 5 minutes
+  private readonly MAX_CLONE_TIME_MS = 45000; // 45 seconds max to prevent server lockups
 
   /**
    * Clones a repository into a temporary directory.
@@ -39,10 +39,10 @@ export class RepositoryFetcherService {
         await execAsync(`git config core.longpaths true`, { cwd: tempDir, timeout: 5000 });
         await execAsync(`git remote add origin ${repoUrl}`, { cwd: tempDir, timeout: 10000, maxBuffer: 10 * 1024 * 1024 });
         await execAsync(`git fetch --depth 1 origin ${commitSha}`, { cwd: tempDir, timeout: this.MAX_CLONE_TIME_MS, maxBuffer: 50 * 1024 * 1024 });
-        await execAsync(`git checkout FETCH_HEAD`, { cwd: tempDir, timeout: 60000, maxBuffer: 50 * 1024 * 1024 });
+        await execAsync(`git checkout FETCH_HEAD`, { cwd: tempDir, timeout: 30000, maxBuffer: 50 * 1024 * 1024 });
       } else {
-        // Simple shallow clone
-        await execAsync(`git -c core.longpaths=true clone --depth 1 ${repoUrl} .`, { cwd: tempDir, timeout: this.MAX_CLONE_TIME_MS, maxBuffer: 50 * 1024 * 1024 });
+        // Fast shallow clone: single-branch and no-tags keeps payload minimal on memory-constrained servers
+        await execAsync(`git -c core.longpaths=true clone --depth 1 --single-branch --no-tags ${repoUrl} .`, { cwd: tempDir, timeout: this.MAX_CLONE_TIME_MS, maxBuffer: 50 * 1024 * 1024 });
       }
       
       return tempDir;
