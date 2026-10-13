@@ -20,6 +20,10 @@ export class AppError extends Error {
 
     Object.setPrototypeOf(this, new.target.prototype);
   }
+
+  public get code(): string {
+    return this.errorCode;
+  }
 }
 
 // 400 — Client sent invalid or malformed input.

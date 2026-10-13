@@ -145,7 +145,7 @@ export class GeminiProvider implements AIProvider {
             : undefined,
         };
       } catch (error: any) {
-        if (error instanceof AppError && error.code === "AI_RATE_LIMIT") {
+        if (error instanceof AppError && error.errorCode === "AI_RATE_LIMIT") {
           lastError = error;
           continue;
         }
