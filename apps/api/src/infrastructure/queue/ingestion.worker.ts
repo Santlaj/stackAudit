@@ -184,6 +184,10 @@ export function startIngestionWorker() {
     logger.error("Ingestion job failed", { jobId: job?.id, name: job?.name, error: err.message });
   });
 
+  worker.on("error", (err: any) => {
+    logger.warn("Ingestion worker Redis connection warning", { error: err.message });
+  });
+
   logger.info("Ingestion worker started", { module: "queue" });
   return worker;
 }

@@ -43,21 +43,24 @@ export async function enqueueTargetedIngestion(language: string, difficulty?: st
  * Called once on server startup.
  */
 export async function registerBroadSweepJob() {
-  // Remove any existing repeatable to avoid duplicates on restart
-  const existing = await ingestionQueue.getRepeatableJobs();
-  for (const job of existing) {
-    if (job.name === "broad-sweep") {
-      await ingestionQueue.removeRepeatableByKey(job.key);
+  try {
+    const existing = await ingestionQueue.getRepeatableJobs();
+    for (const job of existing) {
+      if (job.name === "broad-sweep") {
+        await ingestionQueue.removeRepeatableByKey(job.key);
+      }
     }
-  }
 
-  await ingestionQueue.add("broad-sweep", {}, {
-    repeat: {
-      pattern: "0 */6 * * *", // Every 6 hours
-    },
-    jobId: "broad-sweep-repeatable",
-  });
-  logger.info("Registered broad-sweep repeatable job (every 6 hours)", { module: "queue" });
+    await ingestionQueue.add("broad-sweep", {}, {
+      repeat: {
+        pattern: "0 */6 * * *", // Every 6 hours
+      },
+      jobId: "broad-sweep-repeatable",
+    });
+    logger.info("Registered broad-sweep repeatable job (every 6 hours)", { module: "queue" });
+  } catch (err: any) {
+    logger.warn(`Failed to register broad-sweep job (Redis rate limit or offline): ${err.message}`);
+  }
 }
 
 /**
@@ -65,20 +68,24 @@ export async function registerBroadSweepJob() {
  * Verifies active saved issues and daily challenges against GitHub.
  */
 export async function registerReconciliationJob() {
-  const existing = await ingestionQueue.getRepeatableJobs();
-  for (const job of existing) {
-    if (job.name === "reconcile-issues") {
-      await ingestionQueue.removeRepeatableByKey(job.key);
+  try {
+    const existing = await ingestionQueue.getRepeatableJobs();
+    for (const job of existing) {
+      if (job.name === "reconcile-issues") {
+        await ingestionQueue.removeRepeatableByKey(job.key);
+      }
     }
-  }
 
-  await ingestionQueue.add("reconcile-issues", {}, {
-    repeat: {
-      pattern: "0 */12 * * *", // Every 12 hours
-    },
-    jobId: "reconcile-issues-repeatable",
-  });
-  logger.info("Registered issue reconciliation repeatable job (every 12 hours)", { module: "queue" });
+    await ingestionQueue.add("reconcile-issues", {}, {
+      repeat: {
+        pattern: "0 */12 * * *", // Every 12 hours
+      },
+      jobId: "reconcile-issues-repeatable",
+    });
+    logger.info("Registered issue reconciliation repeatable job (every 12 hours)", { module: "queue" });
+  } catch (err: any) {
+    logger.warn(`Failed to register issue reconciliation job (Redis rate limit or offline): ${err.message}`);
+  }
 }
 
 /**
@@ -86,28 +93,32 @@ export async function registerReconciliationJob() {
  * Called on first server boot.
  */
 export async function triggerInitialIngestionIfNeeded() {
-  // Dynamic import to avoid circular dependency issues at module load time
-  const { prisma } = await import("../prisma/prisma.client.js");
-  
-  const issueCount = await prisma.github_issue.count({ where: { state: "open" } });
-  
-  // In development, if we already have any issues stored in the DB, do not run broad sweep on boot
-  const minThreshold = env.NODE_ENV === "development" ? 1 : 100;
+  try {
+    // Dynamic import to avoid circular dependency issues at module load time
+    const { prisma } = await import("../prisma/prisma.client.js");
+    
+    const issueCount = await prisma.github_issue.count({ where: { state: "open" } });
+    
+    // In development, if we already have any issues stored in the DB, do not run broad sweep on boot
+    const minThreshold = env.NODE_ENV === "development" ? 1 : 100;
 
-  if (issueCount < minThreshold) {
-    // Check if a broad sweep is already waiting or active
-    const activeJobs = await ingestionQueue.getActiveCount();
-    const waitingJobs = await ingestionQueue.getWaitingCount();
-    if (activeJobs > 0 || waitingJobs > 0) {
-      logger.info("Broad-sweep ingestion job already active/waiting, skipping duplicate boot trigger");
-      return;
+    if (issueCount < minThreshold) {
+      // Check if a broad sweep is already waiting or active
+      const activeJobs = await ingestionQueue.getActiveCount();
+      const waitingJobs = await ingestionQueue.getWaitingCount();
+      if (activeJobs > 0 || waitingJobs > 0) {
+        logger.info("Broad-sweep ingestion job already active/waiting, skipping duplicate boot trigger");
+        return;
+      }
+
+      logger.info("Sparse issue DB detected, triggering initial broad-sweep", { issueCount });
+      await ingestionQueue.add("broad-sweep", { immediate: true }, {
+        jobId: "broad-sweep-boot",
+      });
+    } else {
+      logger.info("Issue DB already contains open issues, skipping boot ingestion", { issueCount });
     }
-
-    logger.info("Sparse issue DB detected, triggering initial broad-sweep", { issueCount });
-    await ingestionQueue.add("broad-sweep", { immediate: true }, {
-      jobId: "broad-sweep-boot",
-    });
-  } else {
-    logger.info("Issue DB already contains open issues, skipping boot ingestion", { issueCount });
+  } catch (err: any) {
+    logger.warn(`Failed to check initial ingestion status (Redis rate limit or offline): ${err.message}`);
   }
 }

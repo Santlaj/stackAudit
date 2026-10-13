@@ -57,6 +57,10 @@ export function startAnalysisWorker() {
     });
   });
 
+  worker.on("error", (err: any) => {
+    logger.warn("Analysis worker Redis connection warning", { error: err.message });
+  });
+
   logger.info(`Repository analysis worker started with concurrency: ${concurrency}`, {
     module: "queue",
   });
