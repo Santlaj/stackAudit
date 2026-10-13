@@ -84,18 +84,9 @@ export class MatchingService {
       }
     }
 
-    // If no explicit selections, fall back to profile languages
-    if (effectiveLanguages.size === 0) {
-      const profileLangs = [
-        ...((profile as any).recentLanguages || []),
-        ...((profile as any).observedLanguages || []),
-        ...((profile as any).currentFocus || []),
-      ];
-      for (const l of profileLangs) {
-        effectiveLanguages.add(l);
-      }
-    }
-
+    // Only restrict by language in SQL if the user explicitly provided language/framework filters
+    // When no filter is provided (e.g. "All"), return all open issues across all languages
+    // so every user can see and explore the full catalog of issues, with best matches ranked top.
     const langArray = [...effectiveLanguages];
 
     // Use raw SQL for JSON overlap on repoLanguages, falling back to repoLanguage

@@ -66,6 +66,68 @@ export interface BadgeDto {
   target: number;
 }
 
+export interface DailyChallenge {
+  id: string;
+  challengeDate: string; // YYYY-MM-DD
+  status: "ASSIGNED" | "COMPLETED";
+  completedAt: string | null;
+  checklist: {
+    understoodProblem: boolean;
+    identifiedFiles: boolean;
+    nextStepsPlanned: boolean;
+  } | null;
+  matchId: string;
+  issue: {
+    id: string;
+    repository: string;
+    issueNumber: number;
+    title: string;
+    body: string | null;
+    url: string;
+    state: string;
+    difficulty: string;
+    technologies: string[];
+    labels: string[];
+    repoStars: number;
+    repoActivity: string | null;
+    matchScore: number;
+    reasons: string[];
+    gaps: string[];
+    estimatedMinutes: number | null;
+  };
+}
+
+export interface ChallengeHistory {
+  streak: number;
+  totalCompleted: number;
+  hasCompletedToday: boolean;
+  targetYear: number;
+  targetMonth: number;
+  calendar: Record<string, { completed: boolean; completedAt: string }>;
+}
+
+export interface ContributionProgress {
+  explored: number;
+  started: number;
+  prSubmitted: number;
+  merged: number;
+  totalTracked: number;
+}
+
+export interface TechnologyStat {
+  name: string;
+  repoCount: number;
+  openIssueCount: number;
+  matchedIssueCount: number;
+}
+
+export interface TechnologySummary {
+  totalRepos: number;
+  totalIssues: number;
+  totalMatched: number;
+  technologies: TechnologyStat[];
+}
+
 async function getSafeErrorMessage(res: Response, fallback: string): Promise<string> {
   try {
     const json = await res.json();
@@ -258,6 +320,90 @@ export async function fetchDailyActivity(days: number = 365): Promise<DailyActiv
   } catch {
     return [];
   }
+}
+
+export async function fetchDailyChallenge(): Promise<DailyChallenge> {
+  const res = await fetch(`${API_BASE}/api/discovery/daily-challenge`, {
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const message = await getSafeErrorMessage(res, "Failed to fetch daily challenge");
+    throw new Error(message);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function replaceDailyChallenge(): Promise<DailyChallenge> {
+  const res = await fetch(`${API_BASE}/api/discovery/daily-challenge/replace`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const message = await getSafeErrorMessage(res, "Failed to replace daily challenge");
+    throw new Error(message);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function completeDailyChallenge(checklist: {
+  understoodProblem: boolean;
+  identifiedFiles: boolean;
+  nextStepsPlanned: boolean;
+}): Promise<DailyChallenge> {
+  const res = await fetch(`${API_BASE}/api/discovery/daily-challenge/complete`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ checklist }),
+  });
+  if (!res.ok) {
+    const message = await getSafeErrorMessage(res, "Failed to complete daily challenge");
+    throw new Error(message);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function fetchDailyChallengeHistory(year?: number, month?: number): Promise<ChallengeHistory> {
+  const params = new URLSearchParams();
+  if (year) params.set("year", String(year));
+  if (month) params.set("month", String(month));
+  const url = `${API_BASE}/api/discovery/daily-challenge/history${params.toString() ? `?${params.toString()}` : ""}`;
+  const res = await fetch(url, {
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const message = await getSafeErrorMessage(res, "Failed to fetch challenge history");
+    throw new Error(message);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function fetchContributionProgress(): Promise<ContributionProgress> {
+  const res = await fetch(`${API_BASE}/api/discovery/progress`, {
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const message = await getSafeErrorMessage(res, "Failed to fetch contribution progress");
+    throw new Error(message);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function fetchTechnologyStats(): Promise<TechnologySummary> {
+  const res = await fetch(`${API_BASE}/api/discovery/technologies`, {
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const message = await getSafeErrorMessage(res, "Failed to fetch technology stats");
+    throw new Error(message);
+  }
+  const json = await res.json();
+  return json.data;
 }
 
 

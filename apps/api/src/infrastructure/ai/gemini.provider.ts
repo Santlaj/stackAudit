@@ -3,16 +3,36 @@ import { AIProvider, AIAnalysisRequest, AIAnalysisResult } from "./ai.interface.
 import { logger } from "../../utils/logger.js";
 import { AppError, InternalError } from "../../common/errors/index.js";
 
+interface KeyState {
+  key: string;
+  cooldownUntil: number;
+}
+
 export class GeminiProvider implements AIProvider {
-  private readonly apiKey: string;
+  private readonly keys: KeyState[] = [];
+  private keyIndex = 0;
   private readonly model: string;
 
   constructor(apiKey?: string, model?: string) {
-    const key = apiKey || env.GEMINI_API_KEY;
-    if (!key) {
+    const rawKeys: string[] = [];
+
+    if (apiKey) {
+      rawKeys.push(apiKey);
+    } else if (env.GEMINI_API_KEYS) {
+      rawKeys.push(
+        ...env.GEMINI_API_KEYS.split(",")
+          .map((k) => k.trim())
+          .filter(Boolean)
+      );
+    } else if (env.GEMINI_API_KEY) {
+      rawKeys.push(env.GEMINI_API_KEY);
+    }
+
+    if (rawKeys.length === 0) {
       throw new InternalError("GEMINI_API_KEY is not configured", "AI_CONFIG_ERROR");
     }
-    this.apiKey = key;
+
+    this.keys = rawKeys.map((key) => ({ key, cooldownUntil: 0 }));
     this.model = model || env.GEMINI_MODEL || "gemini-1.5-flash";
   }
 
@@ -20,82 +40,128 @@ export class GeminiProvider implements AIProvider {
     return `Gemini (${this.model})`;
   }
 
+  private getNextAvailableKey(): string | null {
+    const now = Date.now();
+    for (let i = 0; i < this.keys.length; i++) {
+      const idx = (this.keyIndex + i) % this.keys.length;
+      const keyState = this.keys[idx];
+      if (keyState.cooldownUntil <= now) {
+        this.keyIndex = (idx + 1) % this.keys.length;
+        return keyState.key;
+      }
+    }
+    return null;
+  }
+
+  private markKeyCooldown(key: string, cooldownMs = 60000): void {
+    const keyState = this.keys.find((k) => k.key === key);
+    if (keyState) {
+      keyState.cooldownUntil = Date.now() + cooldownMs;
+      logger.warn(`Gemini API key placed in cooldown for ${cooldownMs / 1000}s`, {
+        model: this.model,
+      });
+    }
+  }
+
   async analyze(request: AIAnalysisRequest): Promise<AIAnalysisResult> {
     const startTime = Date.now();
-    logger.info("Sending request to Google Gemini", { model: this.model, operation: "analyze" });
+    let lastError: any = null;
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
-
-    try {
-      const payload: any = {
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: request.prompt }],
-          },
-        ],
-        generationConfig: {
-          temperature: request.temperature ?? 0.1,
-          responseMimeType: "application/json",
-        },
-      };
-
-      if (request.systemContext) {
-        payload.systemInstruction = {
-          parts: [{ text: request.systemContext }],
-        };
+    for (let attempt = 0; attempt < this.keys.length; attempt++) {
+      const activeKey = this.getNextAvailableKey();
+      if (!activeKey) {
+        throw new AppError("All Gemini API keys are currently rate-limited", 429, "AI_RATE_LIMIT", true);
       }
 
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        await this.handleError(response);
-      }
-
-      const data = (await response.json()) as any;
-
-      const candidate = data.candidates?.[0];
-      const text = candidate?.content?.parts?.[0]?.text;
-
-      if (!text) {
-        throw new AppError("Malformed or empty AI response from Gemini", 502, "AI_MALFORMED_RESPONSE", true);
-      }
-
-      const durationMs = Date.now() - startTime;
-      logger.info("Gemini request successful", {
+      logger.info("Sending request to Google Gemini", {
         model: this.model,
         operation: "analyze",
-        durationMs,
+        keySlot: attempt + 1,
       });
 
-      const usageMetadata = data.usageMetadata;
-      return {
-        content: text,
-        usage: usageMetadata
-          ? {
-              promptTokens: usageMetadata.promptTokenCount ?? 0,
-              completionTokens: usageMetadata.candidatesTokenCount ?? 0,
-              totalTokens: usageMetadata.totalTokenCount ?? 0,
-            }
-          : undefined,
-      };
-    } catch (error: any) {
-      if (error instanceof AppError) {
-        throw error;
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${activeKey}`;
+
+      try {
+        const payload: any = {
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: request.prompt }],
+            },
+          ],
+          generationConfig: {
+            temperature: request.temperature ?? 0.1,
+            responseMimeType: "application/json",
+          },
+        };
+
+        if (request.systemContext) {
+          payload.systemInstruction = {
+            parts: [{ text: request.systemContext }],
+          };
+        }
+
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          if (response.status === 429) {
+            this.markKeyCooldown(activeKey);
+            lastError = new AppError("Gemini rate limit exceeded", 429, "AI_RATE_LIMIT", true);
+            continue; // Try next key in rotation
+          }
+          await this.handleError(response);
+        }
+
+        const data = (await response.json()) as any;
+        const candidate = data.candidates?.[0];
+        const text = candidate?.content?.parts?.[0]?.text;
+
+        if (!text) {
+          throw new AppError("Malformed or empty AI response from Gemini", 502, "AI_MALFORMED_RESPONSE", true);
+        }
+
+        const durationMs = Date.now() - startTime;
+        logger.info("Gemini request successful", {
+          model: this.model,
+          operation: "analyze",
+          durationMs,
+        });
+
+        const usageMetadata = data.usageMetadata;
+        return {
+          content: text,
+          usage: usageMetadata
+            ? {
+                promptTokens: usageMetadata.promptTokenCount ?? 0,
+                completionTokens: usageMetadata.candidatesTokenCount ?? 0,
+                totalTokens: usageMetadata.totalTokenCount ?? 0,
+              }
+            : undefined,
+        };
+      } catch (error: any) {
+        if (error instanceof AppError && error.code === "AI_RATE_LIMIT") {
+          lastError = error;
+          continue;
+        }
+        if (error instanceof AppError) {
+          throw error;
+        }
+        logger.error("Gemini AI Analysis Failed", {
+          error: error.message,
+          operation: "analyze",
+          failureCategory: "network_or_internal",
+        });
+        throw new InternalError("Failed to analyze repository with Gemini.", "AI_PROVIDER_ERROR");
       }
-      logger.error("Gemini AI Analysis Failed", {
-        error: error.message,
-        operation: "analyze",
-        failureCategory: "network_or_internal",
-      });
-      throw new InternalError("Failed to analyze repository with Gemini.", "AI_PROVIDER_ERROR");
     }
+
+    throw lastError || new AppError("All Gemini keys failed or rate-limited", 429, "AI_RATE_LIMIT", true);
   }
 
   private async handleError(response: Response): Promise<never> {

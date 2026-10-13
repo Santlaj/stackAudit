@@ -18,12 +18,24 @@ export class DiscoveryService {
   }
 
   async getMatches(userId: string) {
-    return prisma.issue_match.findMany({
+    const existing = await prisma.issue_match.findMany({
       where: { userId },
       orderBy: { matchScore: "desc" },
-      take: 30,
+      take: 150,
       include: { githubIssue: true },
     });
+
+    if (existing && existing.length > 0) {
+      return existing;
+    }
+
+    // If this user has no matches yet, populate and return from the shared github_issues pool
+    try {
+      const { matches } = await this.discoverMatchesForUser(userId);
+      return matches;
+    } catch {
+      return [];
+    }
   }
 
   /**
@@ -50,10 +62,10 @@ export class DiscoveryService {
     // Before filtering, verify we have adequate issue data for the selected languages
     if (languages && languages.length > 0) {
       const coverage = await issueIngestionService.getLanguageCoverage(languages);
-      const uncoveredLangs = languages.filter(l => (coverage[l] || 0) < 5);
+      const uncoveredLangs = languages.filter(l => (coverage[l] || 0) === 0);
 
       if (uncoveredLangs.length > 0) {
-        logger.info("Sparse coverage detected, enqueueing targeted ingestion", { uncoveredLangs });
+        logger.info("Sparse coverage detected (0 issues), enqueueing targeted ingestion", { uncoveredLangs });
         partialCoverage = true;
         
         // Enqueue targeted ingestion for uncovered languages via BullMQ
@@ -98,7 +110,7 @@ export class DiscoveryService {
       }
       
       matchesFound.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
-      topMatches = matchesFound.slice(0, 30);
+      topMatches = matchesFound.slice(0, 150);
 
       // ─── Upsert matches (prevents duplicates) ───
       await Promise.all(
@@ -362,6 +374,135 @@ Extract context and provide the deeper semantic evaluation based on the above co
       data: { status: newStatus },
       include: { githubIssue: true }
     });
+  }
+
+  /**
+   * Retrieves technology aggregate statistics from indexed github_issues.
+   */
+  async getTechnologyStats(userId: string) {
+    const totalReposResult = await prisma.$queryRawUnsafe<{ count: string | number }[]>(`
+      SELECT COUNT(DISTINCT "repository") as count FROM "github_issues" WHERE "state" = 'open'
+    `);
+    const totalIssuesResult = await prisma.$queryRawUnsafe<{ count: string | number }[]>(`
+      SELECT COUNT(*) as count FROM "github_issues" WHERE "state" = 'open'
+    `);
+    const totalMatchedResult = await prisma.issue_match.count({
+      where: { userId }
+    });
+
+    const totalRepos = Number(totalReposResult[0]?.count || 0);
+    const totalIssues = Number(totalIssuesResult[0]?.count || 0);
+    const totalMatched = totalMatchedResult;
+
+    const TECH_LIST: Array<{ name: string; type: "language" | "framework"; keywords?: string[] }> = [
+      { name: "TypeScript", type: "language" },
+      { name: "JavaScript", type: "language" },
+      { name: "Python", type: "language" },
+      { name: "React", type: "framework", keywords: ["react", "reactjs", "nextjs"] },
+      { name: "Node.js", type: "framework", keywords: ["node", "nodejs", "express", "nestjs"] },
+      { name: "Go", type: "language" },
+      { name: "Rust", type: "language" },
+      { name: "Java", type: "language" },
+      { name: "C++", type: "language" },
+      { name: "SQL", type: "language" },
+    ];
+
+    const technologies: Array<{
+      name: string;
+      repoCount: number;
+      openIssueCount: number;
+      matchedIssueCount: number;
+    }> = [];
+
+    technologies.push({
+      name: "All",
+      repoCount: totalRepos,
+      openIssueCount: totalIssues,
+      matchedIssueCount: totalMatched,
+    });
+
+    for (const tech of TECH_LIST) {
+      try {
+        if (tech.type === "language") {
+          const stats = await prisma.$queryRawUnsafe<{ repoCount: string | number; issueCount: string | number }[]>(`
+            SELECT COUNT(DISTINCT "repository") as "repoCount", COUNT(*) as "issueCount"
+            FROM "github_issues"
+            WHERE "state" = 'open'
+              AND (
+                lower("repoLanguage") = lower($1)
+                OR EXISTS (
+                  SELECT 1 FROM jsonb_object_keys(COALESCE("repoLanguages", '{}'::jsonb)) AS k
+                  WHERE lower(k) = lower($1)
+                )
+              )
+          `, tech.name);
+
+          const matchedCount = await prisma.$queryRawUnsafe<{ count: string | number }[]>(`
+            SELECT COUNT(*) as count
+            FROM "issue_matches" im
+            JOIN "github_issues" gi ON im."githubIssueId" = gi.id
+            WHERE im."userId" = $1 AND gi."state" = 'open'
+              AND (
+                lower(gi."repoLanguage") = lower($2)
+                OR EXISTS (
+                  SELECT 1 FROM jsonb_object_keys(COALESCE(gi."repoLanguages", '{}'::jsonb)) AS k
+                  WHERE lower(k) = lower($2)
+                )
+              )
+          `, userId, tech.name);
+
+          technologies.push({
+            name: tech.name,
+            repoCount: Number(stats[0]?.repoCount || 0),
+            openIssueCount: Number(stats[0]?.issueCount || 0),
+            matchedIssueCount: Number(matchedCount[0]?.count || 0),
+          });
+        } else {
+          const stats = await prisma.$queryRawUnsafe<{ repoCount: string | number; issueCount: string | number }[]>(`
+            SELECT COUNT(DISTINCT "repository") as "repoCount", COUNT(*) as "issueCount"
+            FROM "github_issues"
+            WHERE "state" = 'open'
+              AND (
+                EXISTS (
+                  SELECT 1 FROM unnest("repoTopics") as t
+                  WHERE lower(t) = ANY($1::text[])
+                )
+                OR lower("repoDescription") ~* $2
+              )
+          `, tech.keywords, tech.keywords?.join("|"));
+
+          const matchedCount = await prisma.$queryRawUnsafe<{ count: string | number }[]>(`
+            SELECT COUNT(*) as count
+            FROM "issue_matches" im
+            JOIN "github_issues" gi ON im."githubIssueId" = gi.id
+            WHERE im."userId" = $1 AND gi."state" = 'open'
+              AND (
+                EXISTS (
+                  SELECT 1 FROM unnest(gi."repoTopics") as t
+                  WHERE lower(t) = ANY($2::text[])
+                )
+                OR lower(gi."repoDescription") ~* $3
+              )
+          `, userId, tech.keywords, tech.keywords?.join("|"));
+
+          technologies.push({
+            name: tech.name,
+            repoCount: Number(stats[0]?.repoCount || 0),
+            openIssueCount: Number(stats[0]?.issueCount || 0),
+            matchedIssueCount: Number(matchedCount[0]?.count || 0),
+          });
+        }
+      } catch (err) {
+        logger.warn("Failed to compute stats for tech", { tech: tech.name, error: err });
+      }
+    }
+
+    return {
+      totalRepos,
+      totalIssues,
+      totalMatched,
+      technologies
+    };
   }
 }
 

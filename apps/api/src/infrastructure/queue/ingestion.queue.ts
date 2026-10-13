@@ -61,6 +61,27 @@ export async function registerBroadSweepJob() {
 }
 
 /**
+ * Register the repeatable active issue reconciliation job (Tier 2/3).
+ * Verifies active saved issues and daily challenges against GitHub.
+ */
+export async function registerReconciliationJob() {
+  const existing = await ingestionQueue.getRepeatableJobs();
+  for (const job of existing) {
+    if (job.name === "reconcile-issues") {
+      await ingestionQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  await ingestionQueue.add("reconcile-issues", {}, {
+    repeat: {
+      pattern: "0 */12 * * *", // Every 12 hours
+    },
+    jobId: "reconcile-issues-repeatable",
+  });
+  logger.info("Registered issue reconciliation repeatable job (every 12 hours)", { module: "queue" });
+}
+
+/**
  * Trigger an immediate broad-sweep if the DB is sparse.
  * Called on first server boot.
  */
@@ -70,12 +91,23 @@ export async function triggerInitialIngestionIfNeeded() {
   
   const issueCount = await prisma.github_issue.count({ where: { state: "open" } });
   
-  if (issueCount < 100) {
-    logger.info("Sparse issue DB detected, triggering immediate broad-sweep", { issueCount });
+  // In development, if we already have any issues stored in the DB, do not run broad sweep on boot
+  const minThreshold = env.NODE_ENV === "development" ? 1 : 100;
+
+  if (issueCount < minThreshold) {
+    // Check if a broad sweep is already waiting or active
+    const activeJobs = await ingestionQueue.getActiveCount();
+    const waitingJobs = await ingestionQueue.getWaitingCount();
+    if (activeJobs > 0 || waitingJobs > 0) {
+      logger.info("Broad-sweep ingestion job already active/waiting, skipping duplicate boot trigger");
+      return;
+    }
+
+    logger.info("Sparse issue DB detected, triggering initial broad-sweep", { issueCount });
     await ingestionQueue.add("broad-sweep", { immediate: true }, {
-      jobId: `broad-sweep-boot-${Date.now()}`,
+      jobId: "broad-sweep-boot",
     });
   } else {
-    logger.info("Issue DB has adequate coverage, skipping boot ingestion", { issueCount });
+    logger.info("Issue DB already contains open issues, skipping boot ingestion", { issueCount });
   }
 }

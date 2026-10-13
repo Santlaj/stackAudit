@@ -70,27 +70,39 @@ export default function AnalyzePage({ params }: { params: Promise<{ matchId: str
             withCredentials: true,
           });
 
+          let isTerminal = false;
+
           eventSource.onmessage = (event) => {
-            if (isCancelled) return;
+            if (isCancelled || isTerminal) return;
             try {
               const payload = JSON.parse(event.data);
               
               if (payload.status === "COMPLETED") {
+                isTerminal = true;
                 setIsFinishing(true);
                 setContext(payload.context);
-                eventSource?.close();
+                if (eventSource) {
+                  eventSource.onmessage = null;
+                  eventSource.onerror = null;
+                  eventSource.close();
+                }
                 
                 setTimeout(() => {
                   if (!isCancelled) {
                     setStatus("COMPLETED");
                     setIsFinishing(false);
                   }
-                }, 1200);
+                }, 800);
               } else if (payload.status === "FAILED") {
+                isTerminal = true;
                 setStatus("FAILED");
-                setError(payload.error);
-                eventSource?.close();
-              } else {
+                setError(payload.error || "Analysis failed.");
+                if (eventSource) {
+                  eventSource.onmessage = null;
+                  eventSource.onerror = null;
+                  eventSource.close();
+                }
+              } else if (payload.status) {
                 setStatus(payload.status);
               }
             } catch (e) {
@@ -98,12 +110,45 @@ export default function AnalyzePage({ params }: { params: Promise<{ matchId: str
             }
           };
 
-          eventSource.onerror = (e) => {
-            if (isCancelled) return;
-            console.error("SSE stream error", e);
-            eventSource?.close();
-            setStatus("FAILED");
-            setError("Connection to analysis stream lost.");
+          eventSource.onerror = async () => {
+            if (isCancelled || isTerminal) return;
+
+            // In SSE, readyState === 0 (CONNECTING) means browser is auto-reconnecting
+            if (eventSource?.readyState === EventSource.CONNECTING) {
+              return;
+            }
+
+            // Fallback to checking state via REST instead of crashing the UI
+            try {
+              const latest = await startAnalysis(matchId);
+              if (latest.status === "COMPLETED") {
+                isTerminal = true;
+                setContext(latest.context);
+                setStatus("COMPLETED");
+                if (eventSource) {
+                  eventSource.onmessage = null;
+                  eventSource.onerror = null;
+                  eventSource.close();
+                }
+                return;
+              }
+              if (latest.status === "FAILED") {
+                isTerminal = true;
+                setStatus("FAILED");
+                setError(latest.error || "Analysis failed.");
+                if (eventSource) {
+                  eventSource.onmessage = null;
+                  eventSource.onerror = null;
+                  eventSource.close();
+                }
+                return;
+              }
+              // Still actively processing in BullMQ worker
+              setStatus(latest.status);
+            } catch {
+              setStatus("FAILED");
+              setError("Connection to analysis stream lost. Please refresh to check progress.");
+            }
           };
         }
       } catch (err: any) {
@@ -197,6 +242,28 @@ export default function AnalyzePage({ params }: { params: Promise<{ matchId: str
         match={match} 
         matchBadgeSlot={<MatchBadge match={match} knowledgeGaps={knowledgeGaps} />}
       />
+
+      {/* Closed Issue Notification Banner */}
+      {(match.issueState === "closed" || match.status === "CLOSED" || (match as any).isRecentlyClosed) && (
+        <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 pt-4">
+          <div className="p-3.5 rounded-xs border border-amber-500/20 bg-amber-500/5 text-amber-700 dark:text-amber-400 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-500" />
+              <span>
+                <strong>Issue Resolved:</strong> This issue was marked as closed on GitHub. You can still inspect the reference code below, but we recommend choosing an active issue for contributions.
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs border-amber-500/30 hover:bg-amber-500/10 shrink-0 self-start sm:self-auto"
+              onClick={() => router.push("/discover")}
+            >
+              Browse Open Issues
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Loading Pipeline State: Renders the orbital PipelineProgress with Dark Mode support */}
       {isFinishing ? (

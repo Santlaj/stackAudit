@@ -24,14 +24,29 @@ export class AnalysisService {
     if (!match) throw new AppError("Match not found", 404, "MATCH_NOT_FOUND");
     if (match.userId !== userId) throw new AppError("Unauthorized", 403, "UNAUTHORIZED");
 
+    // Tier 1 JIT Verification: Ensure issue is not closed before running analysis
+    const { issueReconciliationService } = await import("../discovery/issue-reconciliation.service.js");
+    const userAccount = await prisma.account.findFirst({
+      where: { userId, providerId: "github" },
+      select: { accessToken: true }
+    });
+    const jitResult = await issueReconciliationService.verifyMatchJit(match, userAccount?.accessToken || undefined);
+    if (jitResult.isClosed) {
+      throw new AppError("This issue has been closed or resolved on GitHub.", 400, "ISSUE_CLOSED");
+    }
+
     // 1. If THIS user's match already has a completed analysis, return it immediately
     if (match.analysis && match.analysis.status === "COMPLETED") {
       return match.analysis;
     }
 
-    // 2. If an analysis for this match is already actively executing, return it
+    // 2. If an analysis for this match is already actively executing, return it ONLY IF it's not a zombie (>30s stale)
     if (match.analysis && !["FAILED", "NOT_STARTED", "COMPLETED"].includes(match.analysis.status)) {
-      return match.analysis;
+      const isZombie = Date.now() - new Date(match.analysis.updatedAt).getTime() > 30000;
+      if (!isZombie) {
+        return match.analysis;
+      }
+      logger.warn(`Recovering stale/zombie analysis (${match.analysis.id}) stuck in ${match.analysis.status}`);
     }
 
     // ─── TIER 1 & TIER 2: GLOBAL ISSUE CACHE CHECK ───────────────────
@@ -130,31 +145,24 @@ export class AnalysisService {
             "CONTEXT_SYNTHESIZED",
           ],
         },
+        updatedAt: {
+          gte: new Date(Date.now() - 30000),
+        },
       },
     });
 
-    let analysis = match.analysis;
-    if (!analysis) {
-      try {
-        analysis = await prisma.repository_analysis.create({
-          data: {
-            matchId,
-            status: "QUEUED",
-          },
-        });
-      } catch (error: any) {
-        if (error.code === "P2002") {
-          analysis = await prisma.repository_analysis.findUnique({ where: { matchId } });
-          return analysis!;
-        }
-        throw error;
-      }
-    } else {
-      analysis = await prisma.repository_analysis.update({
-        where: { id: analysis.id },
-        data: { status: "QUEUED", error: null },
-      });
-    }
+    // Atomic Upsert: Prevents race condition when frontend sends concurrent start requests (e.g. React StrictMode)
+    const analysis = await prisma.repository_analysis.upsert({
+      where: { matchId },
+      create: {
+        matchId,
+        status: "QUEUED",
+      },
+      update: {
+        status: "QUEUED",
+        error: null,
+      },
+    });
 
     // If an analysis pipeline is already in progress elsewhere for this exact issue,
     // don't launch a duplicate pipeline — the active one will sync to this record on completion.
@@ -163,16 +171,22 @@ export class AnalysisService {
       return analysis;
     }
 
-    // Run pipeline in background for this newly discovered issue
-    this.runAnalysisPipeline(analysis.id, match).catch((err) => {
-      logger.error(`Analysis pipeline crashed heavily for ${analysis.id}`, { error: err.message });
-      prisma.repository_analysis
-        .update({
-          where: { id: analysis.id },
-          data: { status: "FAILED", error: "Internal pipeline crash" },
-        })
-        .catch((e: any) => logger.error("Failed to mark analysis as FAILED", e));
-    });
+    // Enqueue pipeline into BullMQ with controlled concurrency (max 2 parallel)
+    try {
+      const { enqueueAnalysisJob } = await import("../../infrastructure/queue/analysis.queue.js");
+      await enqueueAnalysisJob(analysis.id, match.id);
+    } catch (queueErr: any) {
+      logger.warn("Failed to enqueue into BullMQ analysis-queue, running fallback direct pipeline", { error: queueErr.message });
+      this.runAnalysisPipeline(analysis.id, match).catch((err) => {
+        logger.error(`Analysis pipeline crashed heavily for ${analysis.id}`, { error: err.message });
+        prisma.repository_analysis
+          .update({
+            where: { id: analysis.id },
+            data: { status: "FAILED", error: "Internal pipeline crash" },
+          })
+          .catch((e: any) => logger.error("Failed to mark analysis as FAILED", e));
+      });
+    }
 
     return analysis;
   }
@@ -195,7 +209,7 @@ export class AnalysisService {
     }
   }
 
-  private async runAnalysisPipeline(analysisId: string, match: any) {
+  public async runAnalysisPipeline(analysisId: string, match: any) {
     const issue = match.githubIssue;
     if (!issue) {
       await this.updateStatus(analysisId, "FAILED", { error: "No github issue linked." });
@@ -206,32 +220,50 @@ export class AnalysisService {
     let tempDir = null;
 
     try {
-      // 1. Fetch Repository (with graceful fallback for massive repos like Kibana)
+      // 1. Fetch & Analyze Repository
       await this.updateStatus(analysisId, "REPOSITORY_LOADING");
-      try {
-        tempDir = await repositoryFetcherService.fetchRepository(owner, repo);
-        await this.updateStatus(analysisId, "REPOSITORY_LOADED");
-      } catch (fetchErr: any) {
-        logger.warn(`Git clone failed or repo too large for ${owner}/${repo}: ${fetchErr.message}. Proceeding with issue-level semantic analysis.`);
-      }
 
-      // 2. Build Graph & Extract Context (or graceful fallback)
       let graphifyContext = {
         architectureContext: `Repository: ${owner}/${repo}`,
         relevantFiles: [] as any[],
         rawOutput: "Repository source analysis conducted at issue scope.",
       };
 
-      if (tempDir) {
-        try {
-          await this.updateStatus(analysisId, "GRAPH_BUILDING");
-          await graphifyService.buildGraph(tempDir);
-          await this.updateStatus(analysisId, "ARCHITECTURE_ANALYZED");
+      // FAST PATH: In-memory Git Tree inspection via GitHub API (~300ms, zero disk clone)
+      const fastTree = await repositoryFetcherService.fetchRepositoryTreeFast(owner, repo);
 
-          graphifyContext = await graphifyService.extractContext(tempDir, issue.title, issue.body || "");
-          await this.updateStatus(analysisId, "RELEVANT_FILES_IDENTIFIED");
-        } catch (graphErr: any) {
-          logger.warn(`Graph building failed for ${owner}/${repo}: ${graphErr.message}, proceeding with fallback context.`);
+      if (fastTree && fastTree.filePaths.length > 0) {
+        await this.updateStatus(analysisId, "REPOSITORY_LOADED");
+        await this.updateStatus(analysisId, "GRAPH_BUILDING");
+        await this.updateStatus(analysisId, "ARCHITECTURE_ANALYZED");
+
+        graphifyContext = await graphifyService.extractContextFromTree(
+          fastTree.filePaths,
+          { packageJson: fastTree.packageJson, readme: fastTree.readme },
+          issue.title,
+          issue.body || ""
+        );
+        await this.updateStatus(analysisId, "RELEVANT_FILES_IDENTIFIED");
+      } else {
+        // FALLBACK PATH: Shallow clone on disk if GitHub Tree API is unavailable
+        try {
+          tempDir = await repositoryFetcherService.fetchRepository(owner, repo);
+          await this.updateStatus(analysisId, "REPOSITORY_LOADED");
+        } catch (fetchErr: any) {
+          logger.warn(`Git clone fallback failed for ${owner}/${repo}: ${fetchErr.message}. Proceeding with issue-level semantic analysis.`);
+        }
+
+        if (tempDir) {
+          try {
+            await this.updateStatus(analysisId, "GRAPH_BUILDING");
+            await graphifyService.buildGraph(tempDir);
+            await this.updateStatus(analysisId, "ARCHITECTURE_ANALYZED");
+
+            graphifyContext = await graphifyService.extractContext(tempDir, issue.title, issue.body || "");
+            await this.updateStatus(analysisId, "RELEVANT_FILES_IDENTIFIED");
+          } catch (graphErr: any) {
+            logger.warn(`Graph building failed for ${owner}/${repo}: ${graphErr.message}, proceeding with fallback context.`);
+          }
         }
       }
 

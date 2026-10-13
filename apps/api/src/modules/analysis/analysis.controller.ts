@@ -35,8 +35,15 @@ export const streamAnalysis = async (req: Request, res: Response) => {
   try {
     let lastStatus = "";
 
+    let pingCounter = 0;
+
     // Poll the DB for state changes until complete or disconnected
     while (isClientConnected) {
+      pingCounter++;
+      if (pingCounter % 10 === 0 && isClientConnected) {
+        res.write(": keep-alive\n\n");
+      }
+
       const analysis = await analysisService.getAnalysisState(matchId, userId);
       
       if (!analysis) {
@@ -57,8 +64,8 @@ export const streamAnalysis = async (req: Request, res: Response) => {
         break;
       }
 
-      // Poll interval
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Snappy real-time SSE stream poll interval
+      await new Promise(resolve => setTimeout(resolve, 400));
     }
   } catch (error: any) {
     logger.error("SSE stream error", { error: error.message });

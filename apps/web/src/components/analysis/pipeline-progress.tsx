@@ -93,15 +93,29 @@ export function PipelineProgress({ status, error, repositoryFullName = "Reposito
       return;
     }
     if (status === "FAILED") return;
+
+    // Anchor progress floor to real pipeline status
+    const statusFloors: Record<string, number> = {
+      QUEUED: 15,
+      REPOSITORY_LOADING: 30,
+      REPOSITORY_LOADED: 50,
+      GRAPH_BUILDING: 60,
+      ARCHITECTURE_ANALYZED: 75,
+      RELEVANT_FILES_IDENTIFIED: 85,
+      CONTEXT_SYNTHESIZED: 94,
+    };
+
+    const targetFloor = statusFloors[status] || 10;
+    setProgress(prev => Math.max(prev, targetFloor));
     
-    // Simulate natural progress easing up to 98%
+    // Natural smooth easing between stage increments
     const interval = setInterval(() => {
       setProgress((prev) => {
-        const increment = Math.random() * 4;
+        const increment = Math.random() * 2 + 1;
         const next = prev + increment;
         return next > 98 ? 98 : next;
       });
-    }, 800);
+    }, 400);
 
     return () => clearInterval(interval);
   }, [status]);

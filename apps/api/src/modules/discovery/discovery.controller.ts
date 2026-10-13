@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { discoveryService } from "./discovery.service.js";
 import { issueIngestionService } from "./issue-ingestion.service.js";
+import { issueReconciliationService } from "./issue-reconciliation.service.js";
+import { dailyChallengeService } from "./daily-challenge.service.js";
 import { successResponse } from "../../utils/api-response.js";
 import { prisma } from "../../infrastructure/prisma/prisma.client.js";
 
@@ -127,12 +129,35 @@ export class DiscoveryController {
       const { matchId } = req.params as { matchId: string };
       const match = await prisma.issue_match.findUnique({
         where: { id: matchId },
-        include: { githubIssue: true }
+        include: { githubIssue: true },
       });
       if (!match) {
         return res.status(404).json({ success: false, message: "Match not found" });
       }
-      successResponse(res, formatMatchDto(match), "Match retrieved", 200);
+
+      // Tier 1: JIT Verification against GitHub API
+      const userGithubAccount = await prisma.account.findFirst({
+        where: { userId: req.user?.id, providerId: "github" },
+        select: { accessToken: true },
+      });
+      const jitResult = await issueReconciliationService.verifyMatchJit(
+        match,
+        userGithubAccount?.accessToken || undefined
+      );
+
+      // Reflect live verified state in response
+      if (match.githubIssue) {
+        match.githubIssue.state = jitResult.state;
+        match.githubIssue.assigneeCount = jitResult.assigneeCount;
+      }
+      if (jitResult.isClosed) {
+        match.status = "CLOSED";
+      }
+
+      const dto: any = formatMatchDto(match);
+      dto.isRecentlyClosed = jitResult.isRecentlyClosed;
+
+      successResponse(res, dto, "Match retrieved", 200);
     } catch (error) {
       next(error);
     }
@@ -158,6 +183,71 @@ export class DiscoveryController {
       
       const result = await issueIngestionService.ingestIssuesForUser(userId, githubToken);
       successResponse(res, result, "Issue ingestion complete", 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ─── Daily Contribution Challenge Endpoints ───
+
+  async getDailyChallenge(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.id;
+      const challenge = await dailyChallengeService.getTodayChallenge(userId);
+      successResponse(res, challenge, "Daily challenge retrieved", 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async replaceDailyChallenge(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.id;
+      const challenge = await dailyChallengeService.replaceTodayChallenge(userId);
+      successResponse(res, challenge, "Daily challenge replaced", 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async completeDailyChallenge(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.id;
+      const { checklist } = req.body;
+      const updated = await dailyChallengeService.completeChallenge(userId, checklist);
+      successResponse(res, updated, "Daily challenge completed successfully", 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDailyChallengeHistory(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.id;
+      const year = req.query.year ? parseInt(req.query.year as string, 10) : undefined;
+      const month = req.query.month ? parseInt(req.query.month as string, 10) : undefined;
+      const history = await dailyChallengeService.getStreakAndHistory(userId, year, month);
+      successResponse(res, history, "Daily challenge streak and history retrieved", 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getContributionProgress(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.id;
+      const progress = await dailyChallengeService.getContributionProgress(userId);
+      successResponse(res, progress, "Contribution progress retrieved", 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getTechnologyStats(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.id;
+      const stats = await discoveryService.getTechnologyStats(userId);
+      successResponse(res, stats, "Technology statistics retrieved", 200);
     } catch (error) {
       next(error);
     }

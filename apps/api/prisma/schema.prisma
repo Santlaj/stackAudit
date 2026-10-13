@@ -26,6 +26,7 @@ model user {
   profile       developer_profile?
   issueMatches  issue_match[]
   dailyActivities daily_activity[]
+  dailyChallenges daily_challenge[]
 
   @@map("users")
 }
@@ -162,6 +163,7 @@ model issue_match {
 
   // -- Analysis Lifecycle --
   analysis        repository_analysis?
+  dailyChallenges daily_challenge[]
 
   @@unique([userId, githubIssueId])
   @@index([userId])
@@ -247,7 +249,8 @@ model github_issue {
   
   // -- Relations --
   matches         issue_match[]
-  
+  dailyChallenges daily_challenge[]
+
   @@unique([repository, issueNumber])
   @@index([repository])
   @@index([repoLanguage])
@@ -272,4 +275,32 @@ model daily_activity {
   @@unique([userId, activityDate])
   @@index([userId, activityDate])
   @@map("daily_activity")
+}
+
+// ─── Daily Contribution Challenge Tracking ──────────
+
+model daily_challenge {
+  id             String    @id @default(uuid())
+  userId         String
+  user           user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeDate  DateTime  @db.Date
+  
+  githubIssueId  String
+  githubIssue    github_issue @relation(fields: [githubIssueId], references: [id], onDelete: Cascade)
+  
+  matchId        String?
+  match          issue_match? @relation(fields: [matchId], references: [id], onDelete: SetNull)
+
+  status         String    @default("ASSIGNED") // "ASSIGNED", "COMPLETED"
+  completedAt    DateTime?
+  
+  checklist      Json?     // { "understoodProblem": true, "identifiedFiles": true, "nextStepsPlanned": true }
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([userId, challengeDate])
+  @@index([userId, challengeDate])
+  @@index([githubIssueId])
+  @@map("daily_challenges")
 }

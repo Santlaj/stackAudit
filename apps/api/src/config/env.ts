@@ -34,6 +34,7 @@ const envSchema = z.object({
 
   // AI Integration
   GEMINI_API_KEY: z.string().min(1).optional(),
+  GEMINI_API_KEYS: z.string().optional(),
   GEMINI_MODEL: z.string().default("gemini-1.5-flash"),
   GROQ_API_KEY: z.string().min(1).optional(),
   GROQ_API_KEYS: z.string().optional(),

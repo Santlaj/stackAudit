@@ -12,6 +12,78 @@ export class RepositoryFetcherService {
   private readonly MAX_CLONE_TIME_MS = 45000; // 45 seconds max to prevent server lockups
 
   /**
+   * Fast-path: Fetches the repository file tree and manifest files in ~300ms directly
+   * from the GitHub Git Trees API without writing to disk or running git clone.
+   */
+  async fetchRepositoryTreeFast(owner: string, repo: string, token?: string): Promise<{
+    filePaths: string[];
+    packageJson?: string;
+    readme?: string;
+  } | null> {
+    try {
+      const { createGithubClient } = await import("../../infrastructure/github/github.client.js");
+      const octokit = createGithubClient(token);
+
+      const treeResponse = await octokit.rest.git.getTree({
+        owner,
+        repo,
+        tree_sha: "HEAD",
+        recursive: "1",
+      });
+
+      if (!treeResponse.data.tree || treeResponse.data.tree.length === 0) {
+        return null;
+      }
+
+      const filePaths = treeResponse.data.tree
+        .filter((item) => item.type === "blob" && item.path)
+        .map((item) => item.path!);
+
+      let packageJson: string | undefined;
+      let readme: string | undefined;
+
+      const hasPackageJson = filePaths.some(p => p === "package.json");
+      const readmePath = filePaths.find(p => /^readme(\.md)?$/i.test(p));
+
+      const manifestPromises: Promise<void>[] = [];
+
+      if (hasPackageJson) {
+        manifestPromises.push(
+          fetch(`https://raw.githubusercontent.com/${owner}/${repo}/HEAD/package.json`, {
+            signal: AbortSignal.timeout(3000),
+          })
+            .then(res => res.ok ? res.text() : undefined)
+            .then(text => { packageJson = text; })
+            .catch(() => {})
+        );
+      }
+
+      if (readmePath) {
+        manifestPromises.push(
+          fetch(`https://raw.githubusercontent.com/${owner}/${repo}/HEAD/${readmePath}`, {
+            signal: AbortSignal.timeout(3000),
+          })
+            .then(res => res.ok ? res.text() : undefined)
+            .then(text => { readme = text; })
+            .catch(() => {})
+        );
+      }
+
+      await Promise.all(manifestPromises);
+
+      logger.info(`[FastRepoFetcher] Successfully retrieved ${filePaths.length} file paths via GitHub API in memory for ${owner}/${repo}`);
+      return {
+        filePaths,
+        packageJson,
+        readme,
+      };
+    } catch (err: any) {
+      logger.info(`Fast tree inspection skipped for ${owner}/${repo}: ${err.message}. Falling back to shallow clone.`);
+      return null;
+    }
+  }
+
+  /**
    * Clones a repository into a temporary directory.
    * Returns the path to the directory. It is the caller's responsibility to call cleanup.
    */

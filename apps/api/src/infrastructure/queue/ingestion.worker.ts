@@ -136,6 +136,18 @@ async function processTargeted(job: Job, token?: string) {
 }
 
 /**
+ * Process a reconciliation job: verify active and saved issues against GitHub.
+ */
+async function processReconciliation(job: Job, token?: string) {
+  logger.info("Starting background issue reconciliation job", { jobId: job.id });
+  const githubToken = await getBackgroundToken();
+  const { issueReconciliationService } = await import("../../modules/discovery/issue-reconciliation.service.js");
+  const result = await issueReconciliationService.reconcileActiveIssues(githubToken);
+  logger.info("Background issue reconciliation job finished", { jobId: job.id, ...result });
+  return result;
+}
+
+/**
  * Create and start the ingestion worker.
  */
 export function startIngestionWorker() {
@@ -147,6 +159,8 @@ export function startIngestionWorker() {
           return processBroadSweep(job, token);
         case "targeted":
           return processTargeted(job, token);
+        case "reconcile-issues":
+          return processReconciliation(job, token);
         default:
           logger.warn("Unknown job type", { jobName: job.name });
       }
