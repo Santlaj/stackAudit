@@ -137,19 +137,15 @@ export function DiscoveryDashboard() {
       setLoadingInitial(false);
 
       const userObserved = (cached.profile?.observedLanguages || []).map(l => l.toLowerCase());
-      const hasStaleCache = userObserved.length > 0 && cached.matches.slice(0, 15).some(m => {
-        const techs = m.technologies || [];
-        if (techs.length > 0) {
-          return !techs.some(t => userObserved.includes(t.toLowerCase()));
+      const coreUserLangs = userObserved.filter(l => !["html", "css", "markdown", "shell"].includes(l));
+      const effectiveLangs = coreUserLangs.length > 0 ? coreUserLangs : userObserved;
+
+      const hasStaleCache = effectiveLangs.length > 0 && cached.matches.slice(0, 15).some(m => {
+        const primary = (m.technologies?.[0] || (m as any).repoLanguage || "").toLowerCase();
+        if (primary && !effectiveLangs.includes(primary)) {
+          return true;
         }
-        const reasons = m.reasons || [];
-        return reasons.some(r => {
-          const match = r.match(/Strong language match:\s*([^ (]+)/i);
-          if (match && match[1]) {
-            return !userObserved.includes(match[1].toLowerCase());
-          }
-          return false;
-        });
+        return false;
       });
 
       // If fresh, has healthy match coverage, and has no stale matches, return immediately — ZERO database or API queries!
@@ -349,8 +345,12 @@ export function DiscoveryDashboard() {
           ) || (repo.language?.toLowerCase() === selectedTechnology.toLowerCase());
           if (!matchTech) return false;
         } else if (profile?.observedLanguages && profile.observedLanguages.length > 0) {
-          // When "All" is active, suppress any non-matching low-score repos (<= 25)
-          if ((repo.topMatchScore ?? 0) <= 25) return false;
+          const userLangs = new Set(profile.observedLanguages.map(l => l.toLowerCase()));
+          const primaryLang = (repo.language || repo.technologies[0] || "").toLowerCase();
+          // Hide repositories whose primary language is not in the developer's tech stack
+          if (primaryLang && !userLangs.has(primaryLang)) {
+            return false;
+          }
         }
 
         // Search query
@@ -411,8 +411,12 @@ export function DiscoveryDashboard() {
           );
           if (!matchTech) return false;
         } else if (profile?.observedLanguages && profile.observedLanguages.length > 0) {
-          // When "All" is active, suppress any non-matching low-score issues (<= 25)
-          if ((issue.matchScore ?? 0) <= 25) return false;
+          const userLangs = new Set(profile.observedLanguages.map(l => l.toLowerCase()));
+          const primaryLang = (issue.technologies[0] || (issue as any).repoLanguage || "").toLowerCase();
+          // Hide issues whose primary language is not in the developer's tech stack
+          if (primaryLang && !userLangs.has(primaryLang)) {
+            return false;
+          }
         }
 
         // Search query

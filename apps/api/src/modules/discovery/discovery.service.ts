@@ -26,27 +26,32 @@ export class DiscoveryService {
     // Check if existing matches contain non-matching languages (e.g. Go, Ruby, C, Python when user only knows TypeScript)
     if (existing && existing.length > 0 && observedLangs.length > 0) {
       const allowedLangs = new Set(observedLangs.map(l => l.toLowerCase()));
-      const hasUnmatchedTech = existing.slice(0, 20).some(m => {
+      // Ignore auxiliary markup/styling languages when checking core language alignment
+      const coreUserLangs = new Set(
+        [...allowedLangs].filter(l => !["html", "css", "markdown", "shell"].includes(l))
+      );
+      const effectiveAllowed = coreUserLangs.size > 0 ? coreUserLangs : allowedLangs;
+
+      const hasUnmatchedTech = existing.slice(0, 30).some(m => {
         const techs = (m.technologies as string[]) || [];
-        if (techs.length > 0) {
-          const hasOverlap = techs.some(t => allowedLangs.has(t.toLowerCase()));
-          return !hasOverlap;
+        const primary = (techs[0] || "").toLowerCase();
+        if (primary && !effectiveAllowed.has(primary)) {
+          return true;
         }
-        const reasons = (m.reasons as string[]) || [];
-        return reasons.some(r => {
-          const match = r.match(/Strong language match:\s*([^ (]+)/i);
-          if (match && match[1]) {
-            return !allowedLangs.has(match[1].toLowerCase());
-          }
-          return false;
-        });
+        return false;
       });
 
       if (hasUnmatchedTech) {
-        logger.info("Unmatched language matches detected in DB, refreshing for user", { userId });
-        const refreshed = await this.refreshMatchesForUser(userId);
-        if (refreshed && refreshed.length > 0) {
-          return refreshed;
+        logger.info("Unmatched language matches detected in DB, purging and refreshing for user", { userId });
+        await prisma.issue_match.deleteMany({
+          where: {
+            userId,
+            status: { in: ["DISCOVERED", "VIEWED"] }
+          }
+        });
+        const { matches } = await this.discoverMatchesForUser(userId);
+        if (matches && matches.length > 0) {
+          return matches;
         }
       }
     }

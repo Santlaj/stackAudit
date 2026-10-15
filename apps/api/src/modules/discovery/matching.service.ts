@@ -115,34 +115,24 @@ export class MatchingService {
       }
     }
 
-    const langArray = [...effectiveLanguages];
+    // Ignore auxiliary markup/styling languages when filtering candidate repositories
+    const AUXILIARY_LANGS = new Set(["html", "css", "markdown", "shell", "dockerfile", "makefile"]);
+    const coreLangs = langArray.filter(l => !AUXILIARY_LANGS.has(l.toLowerCase()));
+    const effectiveLangParams = (coreLangs.length > 0 ? coreLangs : langArray).map(l => l.toLowerCase());
 
-    // Use raw SQL for JSON overlap on repoLanguages, falling back to repoLanguage
-    // This handles both new rows (with repoLanguages JSON) and legacy rows (only repoLanguage)
     let candidates: any[];
 
-    if (langArray.length > 0) {
-      // Build a query that checks:
-      //   1. repoLanguages JSON has any key matching the target languages, OR
-      //   2. repoLanguage (legacy single string) matches any target language
-      const langParams = langArray.map(l => l.toLowerCase());
-      
+    if (effectiveLangParams.length > 0) {
+      // Primary language MUST match one of the user's core programming languages!
       candidates = await prisma.$queryRawUnsafe(`
         SELECT * FROM "github_issues"
         WHERE "state" = 'open'
           AND ("staleness" IS NULL OR "staleness" != 'abandoned')
           ${explicitDifficulty ? `AND "difficultyEstimate" = $2` : ''}
-          AND (
-            -- Check repoLanguages JSON keys (case-insensitive via lower())
-            EXISTS (
-              SELECT 1 FROM jsonb_object_keys(COALESCE("repoLanguages", '{}'::jsonb)) AS k
-              WHERE lower(k) = ANY($1::text[])
-            )
-            OR lower("repoLanguage") = ANY($1::text[])
-          )
+          AND lower("repoLanguage") = ANY($1::text[])
         ORDER BY "repoStars" DESC, "ingestedAt" DESC
         LIMIT 250
-      `, langParams, ...(explicitDifficulty ? [explicitDifficulty] : []));
+      `, effectiveLangParams, ...(explicitDifficulty ? [explicitDifficulty] : []));
     } else {
       // No language filter — return open issues (filtered by difficulty only if explicitly selected)
       candidates = await prisma.github_issue.findMany({
@@ -340,17 +330,13 @@ export class MatchingService {
       gaps.push(`PR acceptance rate is unknown.`);
     }
 
-    // Hard Language Compatibility Gate:
-    // If the developer has an active stack and the repository has ZERO language overlap,
-    // cap the score to 20% so non-matching technologies cannot score 60-70% as "Good Match"
-    if (targetLanguages.size > 0) {
-      const hasOverlap = repoLangKeys.length > 0
-        ? repoLangKeys.some(k => targetLanguages.has(k))
-        : (issue.repoLanguage && targetLanguages.has(issue.repoLanguage.toLowerCase()));
+    // Hard Language Gate:
+    // If the repository's primary language does NOT match developer skills, complete disqualification (score = 0)!
+    const primaryLangNorm = (issue.repoLanguage || "").toLowerCase();
+    const primaryMatches = targetLanguages.has(primaryLangNorm);
 
-      if (!hasOverlap) {
-        score = Math.min(score, 20);
-      }
+    if (primaryLangNorm && targetLanguages.size > 0 && !primaryMatches) {
+      score = 0;
     }
 
     // Normalize — with framework bonus, max can be 110, so cap at 100
