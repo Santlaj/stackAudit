@@ -53,7 +53,7 @@ export const updatePreferences = async (req: Request, res: Response, next: any):
 // GET /api/users/profile
 export const getProfile = async (req: Request, res: Response, next: any): Promise<void> => {
   try {
-    const profile = await profileService.getProfile(req.user!.id);
+    const profile = await profileService.getProfileWithStatus(req.user!.id);
     successResponse(res, profile, "Developer profile retrieved");
   } catch (error) {
     next(error);

@@ -53,27 +53,14 @@ export class ActivityService {
       await ensureTableExists();
 
       const now = Date.now();
-      const redisKey = `heartbeat:last:${userId}`;
       let isRateLimited = false;
 
-      try {
-        const lastTs = await Promise.race([
-          redis.get(redisKey),
-          new Promise<null>((_, reject) => setTimeout(() => reject(new Error("Redis timeout")), 200))
-        ]);
-        if (lastTs && now - Number(lastTs) < MIN_HEARTBEAT_INTERVAL_MS) {
-          isRateLimited = true;
-        } else {
-          redis.set(redisKey, now, "EX", 120).catch(() => {});
-        }
-      } catch {
-        // In-memory fallback (instant, resilient, zero external network delay)
-        const lastTs = inMemoryHeartbeats.get(userId);
-        if (lastTs && now - lastTs < MIN_HEARTBEAT_INTERVAL_MS) {
-          isRateLimited = true;
-        } else {
-          inMemoryHeartbeats.set(userId, now);
-        }
+      // In-memory rate limiting: zero external Redis network calls, instant 0ms latency, zero quota consumption
+      const lastTs = inMemoryHeartbeats.get(userId);
+      if (lastTs && now - lastTs < MIN_HEARTBEAT_INTERVAL_MS) {
+        isRateLimited = true;
+      } else {
+        inMemoryHeartbeats.set(userId, now);
       }
 
       if (isRateLimited) {

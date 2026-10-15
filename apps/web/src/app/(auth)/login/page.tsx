@@ -20,14 +20,14 @@ export default function LoginPage() {
     setError(null);
     if (provider === "github") {
       setLoadingGithub(true);
-      window.location.href = `${API_BASE}/api/auth/login/github?callbackURL=${encodeURIComponent(window.location.origin + "/")}`;
+      window.location.href = `${API_BASE}/api/auth/login/github?callbackURL=${encodeURIComponent(window.location.origin + "/discover")}`;
       return;
     }
 
     try {
       const { data, error: authError } = await signIn.social({
         provider,
-        callbackURL: `${window.location.origin}/`,
+        callbackURL: `${window.location.origin}/discover`,
       });
       if (authError) throw new Error(authError.message || "Failed to sign in");
     } catch (err: any) {
@@ -49,14 +49,14 @@ export default function LoginPage() {
       const { data, error: authError } = await signIn.email({
         email,
         password,
-        callbackURL: `${window.location.origin}/`,
+        callbackURL: `${window.location.origin}/discover`,
       });
       
       if (authError) {
         throw new Error(authError.message || "Invalid credentials.");
       }
       
-      router.push("/");
+      router.push("/discover");
     } catch (err: any) {
       setError(err.message || "Invalid email or password.");
       setLoadingEmail(false);

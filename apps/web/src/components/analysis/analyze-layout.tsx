@@ -38,7 +38,7 @@ export function AnalyzeLayout({
       {/* Right Rail: Sticky to header offset, self-start, never an inner scroll container */}
       <aside 
         style={{ top: "var(--sticky-offset, 84px)" }}
-        className="flex flex-col gap-5 w-full sticky self-start z-[var(--z-sticky-rail,40)]"
+        className="flex flex-col gap-5 w-full sticky self-start z-10"
         aria-label="Repository and contribution environment rail"
       >
         {rightRail}

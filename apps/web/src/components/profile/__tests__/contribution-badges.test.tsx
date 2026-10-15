@@ -12,6 +12,21 @@ vi.mock("@/lib/api", async () => {
   };
 });
 
+vi.mock("@/lib/auth-client", () => ({
+  useSession: () => ({
+    data: {
+      user: { id: "test-user", name: "Test Developer", image: null },
+    },
+  }),
+}));
+
+vi.mock("next/image", () => ({
+  default: (props: any) => {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img {...props} />;
+  },
+}));
+
 const mockBadgesList: api.BadgeDto[] = [
   {
     id: "FIRST_CONTRIBUTION",
@@ -105,7 +120,7 @@ describe("ContributionBadges Component", () => {
     vi.mocked(api.fetchBadges).mockImplementation(() => new Promise(() => {}));
     render(<ContributionBadges />);
 
-    expect(screen.getByText(/evaluating contribution badges/i)).toBeInTheDocument();
+    expect(screen.getByText(/evaluating badges/i)).toBeInTheDocument();
   });
 
   it("displays error message if badge fetch fails", async () => {
@@ -118,47 +133,30 @@ describe("ContributionBadges Component", () => {
     });
   });
 
-  it("renders all 9 badges with correct earned count and progress values", async () => {
+  it("renders earned badges with registry images and hides unearned ones", async () => {
     vi.mocked(api.fetchBadges).mockResolvedValue(mockBadgesList);
     render(<ContributionBadges />);
 
     await waitFor(() => {
-      expect(screen.getByText("Contribution Badges")).toBeInTheDocument();
+      expect(screen.getByText("Achievements")).toBeInTheDocument();
     });
 
-    // 2 earned out of 9
-    expect(screen.getByText("2")).toBeInTheDocument();
-    expect(screen.getByText(/9 Earned/i)).toBeInTheDocument();
+    // 2 badges earned
+    expect(screen.getByText("2 badges earned")).toBeInTheDocument();
 
-    // Verify badge titles
-    expect(screen.getByText("First Contribution")).toBeInTheDocument();
-    expect(screen.getByText("First PR")).toBeInTheDocument();
-    expect(screen.getByText("Merged")).toBeInTheDocument();
-    expect(screen.getByText("Contributor ×5")).toBeInTheDocument();
-    expect(screen.getByText("Contributor ×10")).toBeInTheDocument();
-    expect(screen.getByText("Issue Explorer")).toBeInTheDocument();
-    expect(screen.getByText("Repository Explorer")).toBeInTheDocument();
-    expect(screen.getByText("Multi-Stack")).toBeInTheDocument();
-    expect(screen.getByText("Repository Contributor")).toBeInTheDocument();
+    // Verify earned badge titles from registry are present
+    expect(screen.getByText("First Verified Contribution")).toBeInTheDocument();
+    expect(screen.getByText("First PR Submitted")).toBeInTheDocument();
 
-    // Verify earned badges have "Earned" label
-    const earnedLabels = screen.getAllByText("Earned");
-    expect(earnedLabels.length).toBe(2);
-
-    // Verify progress values for unearned badges
-    expect(screen.getByText("3 / 5")).toBeInTheDocument();
-    expect(screen.getByText("3 / 10")).toBeInTheDocument();
-    expect(screen.getByText("4 / 5")).toBeInTheDocument();
-    expect(screen.getByText("2 / 5")).toBeInTheDocument();
-    expect(screen.getAllByText("1 / 3").length).toBe(2);
-
-    // Verify link to Discover Issues
-    const discoverLink = screen.getByRole("link", { name: /discover issues/i });
-    expect(discoverLink).toBeInTheDocument();
-    expect(discoverLink).toHaveAttribute("href", "/discover");
+    // Unearned badges should NOT be displayed
+    expect(screen.queryByText("Issue Investigator")).not.toBeInTheDocument();
+    expect(screen.queryByText("Repository Analyst")).not.toBeInTheDocument();
+    expect(screen.queryByText("10 Merged PRs")).not.toBeInTheDocument();
+    expect(screen.queryByText("First PR Merged")).not.toBeInTheDocument();
+    expect(screen.queryByText("Contributor ×5")).not.toBeInTheDocument();
   });
 
-  it("handles case where user has zero started contributions (all locked)", async () => {
+  it("shows empty state when no badges are earned", async () => {
     const zeroBadges: api.BadgeDto[] = mockBadgesList.map(b => ({
       ...b,
       earned: false,
@@ -169,11 +167,12 @@ describe("ContributionBadges Component", () => {
     render(<ContributionBadges />);
 
     await waitFor(() => {
-      expect(screen.getByText("0")).toBeInTheDocument();
-      expect(screen.getByText(/9 Earned/i)).toBeInTheDocument();
+      expect(screen.getByText("No badges earned yet")).toBeInTheDocument();
     });
 
-    // No "Earned" badges
-    expect(screen.queryByText("Earned")).not.toBeInTheDocument();
+    // Should show CTA to discover
+    const discoverLink = screen.getByRole("link", { name: /find contributions/i });
+    expect(discoverLink).toBeInTheDocument();
+    expect(discoverLink).toHaveAttribute("href", "/discover");
   });
 });

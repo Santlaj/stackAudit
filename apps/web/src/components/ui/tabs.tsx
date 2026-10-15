@@ -74,20 +74,20 @@ export function Tabs({
               onKeyDown={(e) => handleKeyDown(e, index)}
               type="button"
               className={cn(
-                "relative px-3.5 py-2 text-xs font-medium transition-colors flex items-center gap-2 rounded-t-sm whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-foreground/20",
+                "relative px-3.5 py-2 text-xs font-medium transition-colors flex items-center gap-1.5 rounded-t-sm whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-foreground/20",
                 isActive
                   ? "text-foreground font-semibold"
-                  : "text-muted-foreground hover:text-foreground/80 hover:bg-secondary/20"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/20"
               )}
             >
               <span>{tab.label}</span>
               {tab.badge && (
                 <span
                   className={cn(
-                    "text-[10px] font-mono px-1.5 py-0.2 rounded border",
+                    "text-xs font-mono px-1.5 py-0.5 rounded",
                     isActive
-                      ? "border-border bg-secondary/80 text-foreground"
-                      : "border-border/40 text-muted-foreground"
+                      ? "bg-secondary text-foreground font-medium"
+                      : "text-muted-foreground bg-secondary/50"
                   )}
                 >
                   {tab.badge}

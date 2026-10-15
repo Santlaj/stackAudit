@@ -22,14 +22,17 @@ app.listen(PORT, async () => {
     startIngestionWorker();
     startAnalysisWorker();
     
-    // Register recurring ingestion job (every 6 hours)
-    await registerBroadSweepJob();
-
-    // Register recurring active issue reconciliation job (every 12 hours)
-    await registerReconciliationJob();
-    
-    // Trigger immediate ingestion if DB is sparse (first boot)
-    await triggerInitialIngestionIfNeeded();
+    // In production, register recurring background jobs.
+    // In development, skip automated repeatable sweeps by default to prevent exhausting serverless Redis quota.
+    if (env.NODE_ENV === "production" || process.env.ENABLE_BACKGROUND_SWEEP === "true") {
+      await registerBroadSweepJob();
+      await registerReconciliationJob();
+      await triggerInitialIngestionIfNeeded();
+    } else {
+      logger.info("Recurring background sweep jobs paused in development to protect Redis quota", {
+        module: "queue",
+      });
+    }
   } catch (queueErr: any) {
     logger.warn(`Background queue initialization deferred/skipped: ${queueErr.message}`, {
       module: "queue",

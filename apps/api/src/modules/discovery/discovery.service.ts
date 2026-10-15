@@ -8,16 +8,14 @@ import { issueIngestionService } from "./issue-ingestion.service.js";
 
 export class DiscoveryService {
   async getProfile(userId: string) {
-    const profile = await prisma.developer_profile.findUnique({
-      where: { userId },
-    });
-    if (!profile) {
-      throw new AppError("Profile not found", 404, "PROFILE_NOT_FOUND");
-    }
-    return profile;
+    const { profileService } = await import("../user/profile.service.js");
+    return profileService.getProfileWithStatus(userId);
   }
 
   async getMatches(userId: string) {
+    const profile = await this.getProfile(userId).catch(() => null);
+    const observedLangs: string[] = (profile as any)?.observedLanguages || [];
+
     const existing = await prisma.issue_match.findMany({
       where: { userId },
       orderBy: { matchScore: "desc" },
@@ -25,15 +23,62 @@ export class DiscoveryService {
       include: { githubIssue: true },
     });
 
-    if (existing && existing.length > 0) {
+    // Check if existing matches contain stale language scores (e.g. scoring removed language like Python as strong match)
+    if (existing && existing.length > 0 && observedLangs.length > 0) {
+      const allowedLangs = new Set(observedLangs.map(l => l.toLowerCase()));
+      const hasStaleLanguageMatch = existing.slice(0, 20).some(m => {
+        const reasons = (m.reasons as string[]) || [];
+        return reasons.some(r => {
+          const match = r.match(/Strong language match:\s*([^ (]+)/i);
+          if (match && match[1]) {
+            return !allowedLangs.has(match[1].toLowerCase());
+          }
+          return false;
+        });
+      });
+
+      if (hasStaleLanguageMatch) {
+        logger.info("Stale language matches detected in DB, refreshing for user", { userId });
+        const refreshed = await this.refreshMatchesForUser(userId);
+        if (refreshed && refreshed.length > 0) {
+          return refreshed;
+        }
+      }
+    }
+
+    if (existing && existing.length >= 15) {
       return existing;
     }
 
-    // If this user has no matches yet, populate and return from the shared github_issues pool
+    // If this user has sparse (< 15) or no matches, populate from the shared catalog
     try {
       const { matches } = await this.discoverMatchesForUser(userId);
-      return matches;
+      return matches && matches.length > 0 ? matches : (existing || []);
     } catch {
+      return existing || [];
+    }
+  }
+
+  /**
+   * Refreshes matches for a user when their profile or preferences change.
+   * Cleans up stale un-saved/un-started matches and recalculates top matches.
+   */
+  async refreshMatchesForUser(userId: string) {
+    logger.info("Refreshing matches for user following profile update", { userId });
+    try {
+      // 1. Delete un-interacted matches (preserve SAVED, STARTED, PR_SUBMITTED, MERGED)
+      await prisma.issue_match.deleteMany({
+        where: {
+          userId,
+          status: { in: ["DISCOVERED", "VIEWED"] }
+        }
+      });
+
+      // 2. Compute fresh matches for the updated profile
+      const { matches } = await this.discoverMatchesForUser(userId);
+      return matches;
+    } catch (err) {
+      logger.error("Failed to refresh matches for user", { userId, error: err });
       return [];
     }
   }
@@ -161,7 +206,8 @@ export class DiscoveryService {
         userId,
         githubIssueId: { in: issueIds }
       },
-      orderBy: { matchScore: 'desc' }
+      orderBy: { matchScore: 'desc' },
+      include: { githubIssue: true }
     });
 
     return { matches, partialCoverage };
@@ -324,10 +370,31 @@ Extract context and provide the deeper semantic evaluation based on the above co
     return prisma.issue_match.findMany({
       where: {
         userId,
-        status: { in: ["SAVED", "ANALYZED", "STARTED"] }
+        status: { in: ["SAVED", "ANALYZED", "STARTED", "PR_SUBMITTED", "MERGED"] }
       },
       orderBy: { updatedAt: "desc" },
       include: { githubIssue: true }
+    });
+  }
+
+  /**
+   * Retrieves all verified historical and active open-source contributions for a user.
+   * Guarantees backward compatibility for existing users who already started,
+   * analyzed, or submitted PRs in StackAudit.
+   */
+  async getContributionHistory(userId: string) {
+    return prisma.issue_match.findMany({
+      where: {
+        userId,
+        status: { in: ["STARTED", "PR_SUBMITTED", "MERGED"] }
+      },
+      orderBy: { updatedAt: "desc" },
+      include: { 
+        githubIssue: true,
+        analysis: {
+          select: { status: true, completedAt: true, error: true }
+        }
+      }
     });
   }
 

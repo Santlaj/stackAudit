@@ -39,6 +39,8 @@ export function startAnalysisWorker() {
       connection: redis,
       prefix: `{stackaudit_${env.NODE_ENV}}`,
       concurrency,
+      drainDelay: 60, // Wait 60s when queue is empty (conserves serverless Redis requests)
+      stalledInterval: 300000, // 5 minutes
       limiter: {
         max: 2,
         duration: 2000,

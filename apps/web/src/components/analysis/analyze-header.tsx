@@ -2,16 +2,8 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { 
-  ArrowLeft, 
-  ExternalLink, 
-  MessageSquare, 
-  Clock, 
-  Sparkles,
-  GitPullRequest
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { StatusIndicator } from "@/components/ui/status-indicator";
 import { IssueMatch } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -41,10 +33,30 @@ export function AnalyzeHeader({ match, matchBadgeSlot, className, ...props }: An
     ? new Date(match.issueUpdatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
     : null;
 
+  // Difficulty formatting
+  const { diffLabel, diffColor } = React.useMemo(() => {
+    if (!match.complexity) return { diffLabel: null, diffColor: "text-muted-foreground" };
+    const cLower = match.complexity.toLowerCase();
+    const isGood = cLower.includes("beginner") || cLower.includes("good");
+    const isInter = cLower.includes("intermediate");
+    const isAdv = cLower.includes("advanced");
+
+    const diffColor = isGood
+      ? "text-emerald-600 dark:text-emerald-400"
+      : isInter
+      ? "text-amber-600 dark:text-amber-400"
+      : isAdv
+      ? "text-rose-600 dark:text-rose-400"
+      : "text-muted-foreground";
+
+    const diffLabel = isGood ? "Good first" : isInter ? "Intermediate" : isAdv ? "Advanced" : match.complexity;
+    return { diffLabel, diffColor };
+  }, [match.complexity]);
+
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 h-16 w-full border-b border-border bg-card/90 backdrop-blur-md px-4 md:px-6 flex items-center justify-between shrink-0 transition-colors",
+        "sticky top-0 z-50 h-16 w-full border-b border-border bg-card/95 backdrop-blur-md px-4 md:px-6 flex items-center justify-between shrink-0 transition-colors",
         className
       )}
       {...props}
@@ -66,24 +78,60 @@ export function AnalyzeHeader({ match, matchBadgeSlot, className, ...props }: An
         <span className="text-border select-none hidden sm:inline" aria-hidden="true">/</span>
 
         <div className="min-w-0 flex flex-col justify-center">
-          {/* Breadcrumb row */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-mono text-xs text-muted-foreground truncate max-w-[140px] md:max-w-[200px]" title={match.repository}>
+          {/* Breadcrumb row: Repository #issue · Language · Difficulty · Status */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+            <span className="font-mono text-xs text-foreground truncate max-w-[140px] md:max-w-[200px]" title={match.repository}>
               {match.repository}
             </span>
-            <span className="text-muted-foreground/40" aria-hidden="true">#</span>
-            <span className="font-mono text-xs text-muted-foreground">{match.issueNumber}</span>
+            {match.issueUrl ? (
+              <a 
+                href={match.issueUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-xs text-muted-foreground hover:text-foreground hover:underline inline-flex items-center"
+                aria-label="View original issue on GitHub"
+                title="View issue on GitHub"
+              >
+                <span className="text-muted-foreground" aria-hidden="true">#</span>
+                <span>{match.issueNumber}</span>
+              </a>
+            ) : (
+              <>
+                <span className="text-muted-foreground" aria-hidden="true">#</span>
+                <span className="font-mono text-xs text-muted-foreground">{match.issueNumber}</span>
+              </>
+            )}
+
+            {/* Language */}
+            {match.technologies && match.technologies.length > 0 && (
+              <>
+                <span className="text-muted-foreground hidden sm:inline" aria-hidden="true">·</span>
+                <span className="text-xs font-mono text-muted-foreground hidden sm:inline">
+                  {match.technologies[0]}
+                </span>
+              </>
+            )}
+
+            {/* Difficulty */}
+            {diffLabel && (
+              <>
+                <span className="text-muted-foreground" aria-hidden="true">·</span>
+                <span className={cn("text-xs font-medium shrink-0", diffColor)}>
+                  {diffLabel}
+                </span>
+              </>
+            )}
 
             {/* Status dot */}
-            <div className="hidden md:flex items-center gap-1.5 ml-2 border-l border-border pl-2">
+            <div className="hidden md:flex items-center gap-1.5 ml-1 border-l border-border/60 pl-2">
               <StatusIndicator status={mappedStatus} className="scale-75" />
-              <span className="text-[11px] text-muted-foreground capitalize">{activityLabel}</span>
+              <span className="text-xs text-muted-foreground capitalize">{activityLabel}</span>
             </div>
           </div>
 
           {/* Issue title */}
           <h1 
-            className="text-sm font-semibold text-foreground truncate tracking-tight"
+            className="text-sm font-semibold text-foreground truncate tracking-tight mt-0.5"
             title={match.issueTitle}
           >
             {match.issueTitle}
@@ -91,37 +139,9 @@ export function AnalyzeHeader({ match, matchBadgeSlot, className, ...props }: An
         </div>
       </div>
 
-      {/* Right side: Metadata + Match Score + GitHub Link */}
-      <div className="flex items-center gap-2.5 shrink-0">
-        {/* Difficulty Badge */}
-        {match.complexity && (
-          <Badge 
-            variant="secondary" 
-            className="hidden md:inline-flex text-[11px] px-2 py-0.5 border border-border/80 font-normal bg-secondary/70 text-foreground"
-          >
-            {match.complexity}
-          </Badge>
-        )}
-
-        {/* Primary Language */}
-        {match.technologies && match.technologies.length > 0 && (
-          <Badge 
-            variant="outline" 
-            className="hidden lg:inline-flex text-[11px] px-2 py-0.5 font-mono text-muted-foreground"
-          >
-            {match.technologies[0]}
-          </Badge>
-        )}
-
-        {/* Comments Count */}
-        {typeof match.commentsCount === "number" && match.commentsCount > 0 && (
-          <div className="hidden xl:flex items-center gap-1 text-xs text-muted-foreground px-1.5" title={`${match.commentsCount} comments`}>
-            <MessageSquare className="h-3.5 w-3.5" />
-            <span>{match.commentsCount}</span>
-          </div>
-        )}
-
-        {/* MatchBadge Slot or Default Score Pill */}
+      {/* Right side: Match Fit Score */}
+      <div className="flex items-center gap-3 shrink-0">
+        {/* Match Fit Score Popover Trigger */}
         {matchBadgeSlot ? (
           matchBadgeSlot
         ) : (
@@ -129,30 +149,12 @@ export function AnalyzeHeader({ match, matchBadgeSlot, className, ...props }: An
             tabIndex={0}
             role="button"
             aria-label={`Match score: ${match.matchScore || 0}%`}
-            className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 dark:bg-emerald-950/40 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 focus:outline-none focus:ring-1 focus:ring-ring cursor-default"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 cursor-default"
           >
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
             <span>{match.matchScore || 0}% Match</span>
           </div>
         )}
-
-        {/* View on GitHub button */}
-        <Button
-          variant="outline"
-          size="sm"
-          asChild
-          className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/60 border-border"
-        >
-          <a 
-            href={match.issueUrl} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            aria-label="View original issue on GitHub"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">GitHub</span>
-          </a>
-        </Button>
       </div>
     </header>
   );

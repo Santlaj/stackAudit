@@ -82,12 +82,17 @@ export class ProfileService {
         contributionStats.issueCount + 
         contributionStats.reviewCount;
 
-      // 10. Upsert the profile
+      // 10. Upsert the profile (preserve user-customized languages if existing)
+      const existingProfile = await prisma.developer_profile.findUnique({ where: { userId } });
+      const mergedObservedLanguages = existingProfile?.observedLanguages && existingProfile.observedLanguages.length > 0
+        ? Array.from(new Set([...observedLanguages, ...existingProfile.observedLanguages]))
+        : observedLanguages;
+
       const profile = await prisma.developer_profile.upsert({
         where: { userId },
         update: {
           githubLogin: githubUser.login,
-          observedLanguages,
+          observedLanguages: mergedObservedLanguages,
           recentLanguages,
           publicRepoCount: githubUser.publicRepos || 0,
           totalContributions,
@@ -182,20 +187,63 @@ export class ProfileService {
    * Update the user-confirmed intent and preferences
    */
   async updateUserPreferences(userId: string, data: {
+    observedLanguages?: string[];
     currentFocus?: string[];
     learningGoals?: string[];
     preferredArea?: string;
     preferredComplexity?: string;
     preferredContributionTypes?: string[];
   }) {
-    return prisma.developer_profile.upsert({
+    // Check if user has a GitHub account connected
+    const githubAccount = await prisma.account.findFirst({
+      where: { userId, providerId: "github" }
+    });
+
+    // When the user explicitly updates observedLanguages, synchronize recentLanguages
+    // so that deleted languages (e.g. Python) do not linger in the database
+    let recentLanguagesUpdate: string[] | undefined;
+    if (data.observedLanguages) {
+      const existing = await prisma.developer_profile.findUnique({
+        where: { userId },
+        select: { recentLanguages: true },
+      });
+      if (existing?.recentLanguages && existing.recentLanguages.length > 0) {
+        const allowed = new Set(data.observedLanguages.map(l => l.toLowerCase()));
+        recentLanguagesUpdate = existing.recentLanguages.filter(l => allowed.has(l.toLowerCase()));
+      }
+    }
+
+    const updatePayload: any = { ...data };
+    if (recentLanguagesUpdate !== undefined) {
+      updatePayload.recentLanguages = recentLanguagesUpdate;
+    }
+
+    const updated = await prisma.developer_profile.upsert({
       where: { userId },
-      update: data,
+      update: updatePayload,
       create: {
         userId,
         ...data,
+        ...(recentLanguagesUpdate ? { recentLanguages: recentLanguagesUpdate } : {}),
       },
     } as any);
+
+    // If GitHub account is connected but profile hasn't been ingested from GitHub yet, trigger ingestion in background
+    if (githubAccount?.accessToken && (!updated.observedLanguages || updated.observedLanguages.length === 0)) {
+      this.ingestGitHubProfile(userId, githubAccount.accessToken).catch(err => {
+        logger.warn("Background GitHub ingestion on profile creation failed", { userId, error: err });
+      });
+    }
+
+    // Refresh matching recommendations so Discover immediately reflects the updated stack
+    try {
+      const { discoveryService } = await import("../discovery/discovery.service.js");
+      await discoveryService.refreshMatchesForUser(userId);
+    } catch (err) {
+      logger.warn("Failed to auto-refresh matches on profile update", { userId, error: err });
+    }
+
+    return updated;
   }
 
   async getProfile(userId: string) {
@@ -206,6 +254,48 @@ export class ProfileService {
       throw new AppError("Profile not found", 404, "PROFILE_NOT_FOUND");
     }
     return profile;
+  }
+
+  /**
+   * Get developer profile together with GitHub link status and onboarding completion status
+   */
+  async getProfileWithStatus(userId: string) {
+    const [profile, githubAccount] = await Promise.all([
+      prisma.developer_profile.findUnique({ where: { userId } }),
+      prisma.account.findFirst({ where: { userId, providerId: "github" } }),
+    ]);
+
+    const hasGithub = Boolean(githubAccount?.accessToken);
+    const hasCompletedOnboarding = Boolean(
+      profile &&
+      profile.preferredComplexity &&
+      (
+        (profile.currentFocus && profile.currentFocus.length > 0) ||
+        (profile.observedLanguages && profile.observedLanguages.length > 0)
+      )
+    );
+
+    if (!profile) {
+      return {
+        id: null,
+        userId,
+        hasGithub,
+        githubLogin: null,
+        hasCompletedOnboarding: false,
+        observedLanguages: [],
+        currentFocus: [],
+        learningGoals: [],
+        preferredArea: null,
+        preferredComplexity: null,
+        preferredContributionTypes: [],
+      };
+    }
+
+    return {
+      ...profile,
+      hasGithub,
+      hasCompletedOnboarding,
+    };
   }
 }
 

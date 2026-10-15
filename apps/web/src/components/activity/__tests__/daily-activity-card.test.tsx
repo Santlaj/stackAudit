@@ -21,10 +21,10 @@ describe("DailyActivityCard Component", () => {
     vi.mocked(api.fetchDailyActivity).mockImplementation(() => new Promise(() => {}));
     render(<DailyActivityCard />);
 
-    expect(screen.getByText(/loading activity/i)).toBeInTheDocument();
+    expect(screen.getByText(/loading 1-year activity data/i)).toBeInTheDocument();
   });
 
-  it("renders header, 30 days grid, and truthful active time tooltips", async () => {
+  it("renders header, 1-year 52-week grid, and truthful active time tooltips", async () => {
     const todayStr = new Date().toISOString().slice(0, 10);
     const mockData: api.DailyActivityRecord[] = [
       { date: todayStr, activeSeconds: 5040 }, // 1h 24m
@@ -35,11 +35,10 @@ describe("DailyActivityCard Component", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Daily Activity")).toBeInTheDocument();
-      expect(screen.getByText("Your active time on StackAudit (last 30 days)")).toBeInTheDocument();
+      expect(screen.getByText(/Your active engagement time on StackAudit over the last 12 months/i)).toBeInTheDocument();
     });
 
     // Verify total time formatted
-    expect(screen.getByText("Total this month:")).toBeInTheDocument();
     expect(screen.getByText("1h 24m")).toBeInTheDocument();
 
     // Hover today's active cell

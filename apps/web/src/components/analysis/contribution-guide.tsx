@@ -280,7 +280,7 @@ export function ContributionGuide({
             <Compass className="h-3.5 w-3.5 text-muted-foreground" />
             <span>Contribution Guide</span>
           </h2>
-          <span className="text-[11px] font-mono text-muted-foreground">
+          <span className="text-xs font-mono text-muted-foreground">
             Step {activeStep} of 5
           </span>
         </div>
@@ -308,12 +308,12 @@ export function ContributionGuide({
                     isActive
                       ? "bg-secondary text-foreground font-semibold border-l-2 border-emerald-600 dark:border-emerald-400"
                       : isVisited
-                      ? "hover:bg-secondary/60 text-foreground/80"
+                      ? "hover:bg-secondary/60 text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                   aria-current={isActive ? "step" : undefined}
                 >
-                  <div className="flex items-center gap-1.5 text-[11px] font-mono">
+                  <div className="flex items-center gap-1.5 text-xs font-mono">
                     {isVisited && !isActive ? (
                       <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     ) : (
@@ -321,7 +321,7 @@ export function ContributionGuide({
                     )}
                     <span className="truncate hidden sm:inline">{step.name}</span>
                   </div>
-                  <div className="text-[10px] truncate text-muted-foreground hidden md:block">
+                  <div className="text-xs truncate text-muted-foreground hidden md:block">
                     {step.title.split(" ")[0]}
                   </div>
                 </button>
@@ -380,14 +380,14 @@ export function ContributionGuide({
                       {isActive && (
                         <Badge
                           variant="default"
-                          className="bg-emerald-600 hover:bg-emerald-600 text-[10px] px-1.5 py-0 uppercase tracking-wider font-mono h-4"
+                          className="bg-emerald-600 hover:bg-emerald-600 text-xs px-1.5 py-0 uppercase tracking-wider font-mono h-4"
                         >
                           Active
                         </Badge>
                       )}
                     </div>
                     {!isExpanded && (
-                      <p className="text-[11px] text-muted-foreground truncate mt-0.5 max-w-xl">
+                      <p className="text-xs text-muted-foreground truncate mt-0.5 max-w-xl">
                         {step.objective}
                       </p>
                     )}
@@ -405,15 +405,15 @@ export function ContributionGuide({
                   {/* Objective */}
                   <div className="p-3 rounded-md bg-secondary/40 border border-border/60">
                     <span className="font-semibold text-foreground block mb-0.5">Objective:</span>
-                    <p className="text-foreground/90 leading-relaxed">{step.objective}</p>
+                    <p className="text-foreground leading-relaxed">{step.objective}</p>
                   </div>
 
                   {/* Grounded Guidance */}
                   <div className="space-y-1.5">
-                    <h4 className="font-semibold text-foreground uppercase tracking-wider text-[11px] text-muted-foreground">
+                    <h4 className="font-semibold text-foreground uppercase tracking-wider text-xs text-muted-foreground">
                       Repository Guidance
                     </h4>
-                    <p className="text-foreground/85 leading-relaxed whitespace-pre-line font-sans">
+                    <p className="text-foreground leading-relaxed whitespace-pre-line font-sans">
                       {step.guidanceText}
                     </p>
                   </div>
@@ -421,12 +421,12 @@ export function ContributionGuide({
                   {/* Key Questions to Answer */}
                   {step.questions.length > 0 && (
                     <div className="space-y-1.5">
-                      <h4 className="font-semibold text-foreground uppercase tracking-wider text-[11px] text-muted-foreground">
+                      <h4 className="font-semibold text-foreground uppercase tracking-wider text-xs text-muted-foreground">
                         Key Questions to Answer
                       </h4>
                       <ul className="space-y-1 pl-1">
                         {step.questions.map((q, idx) => (
-                          <li key={idx} className="flex items-start gap-2 text-foreground/85 leading-relaxed">
+                          <li key={idx} className="flex items-start gap-2 text-foreground leading-relaxed">
                             <span className="text-muted-foreground font-mono">Q{idx + 1}:</span>
                             <span>{q}</span>
                           </li>
@@ -438,14 +438,14 @@ export function ContributionGuide({
                   {/* Evidence / Code Anchors to Inspect */}
                   {step.evidence && step.evidence.length > 0 && (
                     <div className="space-y-1.5">
-                      <h4 className="font-semibold text-foreground uppercase tracking-wider text-[11px] text-muted-foreground">
+                      <h4 className="font-semibold text-foreground uppercase tracking-wider text-xs text-muted-foreground">
                         Evidence & Points of Investigation
                       </h4>
                       <div className="space-y-1">
                         {step.evidence.map((ev, idx) => (
                           <div
                             key={idx}
-                            className="p-2 rounded border border-border/70 bg-card font-mono text-[11px] text-foreground/90"
+                            className="p-2 rounded border border-border bg-card font-mono text-xs text-foreground"
                           >
                             {ev}
                           </div>
@@ -457,17 +457,17 @@ export function ContributionGuide({
                   {/* Files to Inspect for this step */}
                   {step.suggestedFiles.length > 0 && (
                     <div className="space-y-1.5">
-                      <h4 className="font-semibold text-foreground uppercase tracking-wider text-[11px] text-muted-foreground">
+                      <h4 className="font-semibold text-foreground uppercase tracking-wider text-xs text-muted-foreground">
                         Files to Inspect
                       </h4>
                       <div className="space-y-1">
                         {step.suggestedFiles.map((f, idx) => (
                           <div
                             key={idx}
-                            className="flex items-center justify-between px-2.5 py-1.5 rounded border border-border/70 bg-card font-mono text-[11px]"
+                            className="flex items-center justify-between px-2.5 py-1.5 rounded border border-border bg-card font-mono text-xs"
                           >
                             <span className="text-foreground truncate">{f.file}</span>
-                            <span className="text-[10px] text-muted-foreground capitalize shrink-0 ml-2">
+                            <span className="text-xs text-muted-foreground capitalize shrink-0 ml-2">
                               {f.role}
                             </span>
                           </div>
@@ -479,7 +479,7 @@ export function ContributionGuide({
                   {/* Commands to Run (Validation Step) */}
                   {step.commands && step.commands.length > 0 && (
                     <div className="space-y-1.5">
-                      <h4 className="font-semibold text-foreground uppercase tracking-wider text-[11px] text-muted-foreground flex items-center gap-1.5">
+                      <h4 className="font-semibold text-foreground uppercase tracking-wider text-xs text-muted-foreground flex items-center gap-1.5">
                         <Terminal className="h-3.5 w-3.5" />
                         <span>Verified Validation Commands</span>
                       </h4>
@@ -487,7 +487,7 @@ export function ContributionGuide({
                         {step.commands.map((cmd, idx) => (
                           <pre
                             key={idx}
-                            className="p-2 rounded bg-secondary/60 border border-border/80 font-mono text-[11px] text-emerald-700 dark:text-emerald-400 overflow-x-auto"
+                            className="p-2 rounded bg-secondary/60 border border-border font-mono text-xs text-emerald-700 dark:text-emerald-400 overflow-x-auto"
                           >
                             <code>{cmd}</code>
                           </pre>
@@ -499,13 +499,13 @@ export function ContributionGuide({
                   {/* Done Criteria (Validation Step) */}
                   {step.doneCriteria && step.doneCriteria.length > 0 && (
                     <div className="space-y-1.5">
-                      <h4 className="font-semibold text-foreground uppercase tracking-wider text-[11px] text-muted-foreground flex items-center gap-1.5">
+                      <h4 className="font-semibold text-foreground uppercase tracking-wider text-xs text-muted-foreground flex items-center gap-1.5">
                         <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                         <span>Contribution Readiness (Done Criteria)</span>
                       </h4>
                       <ul className="space-y-1 pl-1">
                         {step.doneCriteria.map((item, idx) => (
-                          <li key={idx} className="flex items-start gap-2 text-foreground/85 leading-relaxed">
+                          <li key={idx} className="flex items-start gap-2 text-foreground leading-relaxed">
                             <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
                             <span>{item}</span>
                           </li>

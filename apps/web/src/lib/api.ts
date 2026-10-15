@@ -2,11 +2,14 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:400
 
 // --- Types ---
 export interface DeveloperProfile {
-  id: string;
+  id?: string | null;
   userId: string;
+  githubLogin?: string | null;
+  hasGithub?: boolean;
+  hasCompletedOnboarding?: boolean;
   observedLanguages: string[];
-  publicRepoCount: number;
-  totalContributions: number;
+  publicRepoCount?: number;
+  totalContributions?: number;
   githubBio?: string;
   githubCompany?: string;
   githubLocation?: string;
@@ -137,9 +140,66 @@ async function getSafeErrorMessage(res: Response, fallback: string): Promise<str
   }
 }
 
+// --- Client-Side LocalStorage Caching with TTL (Reduces server & DB load) ---
+interface ClientCacheEnvelope<T> {
+  data: T;
+  expiresAt: number;
+}
+
+export function getClientCache<T>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const envelope: ClientCacheEnvelope<T> = JSON.parse(raw);
+    if (Date.now() > envelope.expiresAt) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return envelope.data;
+  } catch {
+    return null;
+  }
+}
+
+export function setClientCache<T>(key: string, data: T, ttlMs: number): void {
+  if (typeof window === "undefined") return;
+  try {
+    const envelope: ClientCacheEnvelope<T> = {
+      data,
+      expiresAt: Date.now() + ttlMs,
+    };
+    localStorage.setItem(key, JSON.stringify(envelope));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+export function clearClientCache(prefix: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const toRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(prefix)) {
+        toRemove.push(k);
+      }
+    }
+    toRemove.forEach((k) => localStorage.removeItem(k));
+  } catch {
+    // Ignore
+  }
+}
+
 // --- API Calls ---
 
 export async function fetchProfile(userId?: string): Promise<DeveloperProfile> {
+  const cacheKey = `stackaudit_profile_${userId || "current"}`;
+  const cached = getClientCache<DeveloperProfile>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   // Using the new secure endpoint that doesn't rely on client-provided userId if omitted
   const url = userId ? `${API_BASE}/api/discovery/profile/${userId}` : `${API_BASE}/api/users/profile`;
   const res = await fetch(url, {
@@ -147,7 +207,30 @@ export async function fetchProfile(userId?: string): Promise<DeveloperProfile> {
   });
   if (!res.ok) throw new Error("Failed to fetch profile");
   const json = await res.json();
+  if (json.data) {
+    setClientCache(cacheKey, json.data, 5 * 60 * 1000); // 5 min TTL
+  }
   return json.data;
+}
+
+export function clearDiscoveryCache(userId?: string) {
+  if (typeof window === "undefined") return;
+  try {
+    if (userId) {
+      localStorage.removeItem(`stackaudit_discovery_${userId}`);
+    }
+    // Also scan and remove any stackaudit_discovery keys to be 100% clean
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("stackaudit_discovery_")) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+  } catch {
+    // Ignore storage errors
+  }
 }
 
 export async function updateProfile(userId: string, data: Partial<DeveloperProfile>): Promise<DeveloperProfile> {
@@ -159,6 +242,10 @@ export async function updateProfile(userId: string, data: Partial<DeveloperProfi
   });
   if (!res.ok) throw new Error("Failed to update profile");
   const json = await res.json();
+  // Clear local caches so UI will immediately load fresh data
+  clearClientCache("stackaudit_profile_");
+  clearClientCache("stackaudit_matches_");
+  clearDiscoveryCache(userId);
   return json.data;
 }
 
@@ -169,6 +256,8 @@ export async function ingestProfile(): Promise<DeveloperProfile> {
   });
   if (!res.ok) throw new Error("Failed to ingest GitHub profile");
   const json = await res.json();
+  clearClientCache("stackaudit_profile_");
+  clearDiscoveryCache();
   return json.data;
 }
 
@@ -230,6 +319,7 @@ export async function toggleSaveMatch(matchId: string): Promise<IssueMatch> {
     throw new Error(message);
   }
   const json = await res.json();
+  clearClientCache("stackaudit_history_");
   return json.data;
 }
 
@@ -245,6 +335,29 @@ export async function getSavedMatches(): Promise<IssueMatch[]> {
   return json.data.matches;
 }
 
+export async function fetchContributionHistory(userId?: string): Promise<IssueMatch[]> {
+  const cacheKey = `stackaudit_history_${userId || "current"}`;
+  const cached = getClientCache<IssueMatch[]>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const url = userId 
+    ? `${API_BASE}/api/discovery/history?userId=${encodeURIComponent(userId)}` 
+    : `${API_BASE}/api/discovery/history`;
+  const res = await fetch(url, {
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const message = await getSafeErrorMessage(res, "Failed to fetch contribution history");
+    throw new Error(message);
+  }
+  const json = await res.json();
+  const data = json.data || [];
+  setClientCache(cacheKey, data, 5 * 60 * 1000); // 5 min TTL
+  return data;
+}
+
 export async function updateMatchStatus(matchId: string, status: string): Promise<IssueMatch> {
   const res = await fetch(`${API_BASE}/api/discovery/matches/${matchId}/status`, {
     method: "PATCH",
@@ -257,6 +370,9 @@ export async function updateMatchStatus(matchId: string, status: string): Promis
     throw new Error(message);
   }
   const json = await res.json();
+  // Clear caches when contribution work is updated
+  clearClientCache("stackaudit_history_");
+  clearClientCache("stackaudit_badges_");
   return json.data;
 }
 
@@ -273,8 +389,17 @@ export async function startAnalysis(matchId: string): Promise<any> {
   return json.data;
 }
 
-export async function fetchBadges(): Promise<BadgeDto[]> {
-  const res = await fetch(`${API_BASE}/api/users/badges`, {
+export async function fetchBadges(userId?: string): Promise<BadgeDto[]> {
+  const cacheKey = `stackaudit_badges_${userId || "current"}`;
+  const cached = getClientCache<BadgeDto[]>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const url = userId 
+    ? `${API_BASE}/api/badges?userId=${encodeURIComponent(userId)}` 
+    : `${API_BASE}/api/badges`;
+  const res = await fetch(url, {
     credentials: "include",
   });
   if (!res.ok) {
@@ -282,7 +407,9 @@ export async function fetchBadges(): Promise<BadgeDto[]> {
     throw new Error(message);
   }
   const json = await res.json();
-  return json.data;
+  const data = json.data || [];
+  setClientCache(cacheKey, data, 10 * 60 * 1000); // 10 min TTL
+  return data;
 }
 
 export interface DailyActivityRecord {

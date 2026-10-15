@@ -14,6 +14,7 @@ import {
   CircleDot,
   FileCode
 } from "lucide-react";
+import { TECH_ICONS, getTechIconClass } from "./technology-explorer";
 
 export interface RepositoryGroup {
   repository: string;
@@ -68,12 +69,20 @@ export function RepositoryRow({
   const dotColor = repo.language ? LANG_COLORS[repo.language] : undefined;
 
   const activityColor = 
-    repo.activityStatus === "active" ? "bg-emerald-500" :
-    repo.activityStatus === "moderate" ? "bg-amber-500" :
-    repo.activityStatus === "low" ? "bg-zinc-400" : "bg-zinc-500";
+    repo.activityStatus === "active" ? "bg-emerald-500/70 dark:bg-emerald-400/60" :
+    repo.activityStatus === "moderate" ? "bg-amber-500/70 dark:bg-amber-400/60" :
+    "bg-muted-foreground/30";
+
+  // Filter out redundant language tag if it matches the main repo language
+  const displayTechnologies = React.useMemo(() => {
+    const langLower = (repo.language || "").toLowerCase();
+    return repo.technologies
+      .filter((t) => t.toLowerCase() !== langLower)
+      .slice(0, 3);
+  }, [repo.technologies, repo.language]);
 
   return (
-    <div className="border border-border/70 rounded-xs bg-card hover:border-border transition-colors">
+    <div className="border border-border rounded-xs bg-card hover:border-foreground/30 transition-colors shadow-2xs">
       {/* REPOSITORY HEADER ROW */}
       <div 
         onClick={onToggleExpand}
@@ -131,19 +140,32 @@ export function RepositoryRow({
 
             {/* Tech badges */}
             <div className="flex items-center gap-2 flex-wrap pt-0.5">
-              {repo.language && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-foreground/80">
-                  {dotColor && (
-                    <span 
-                      className="w-1.5 h-1.5 rounded-full shrink-0" 
-                      style={{ backgroundColor: dotColor }} 
-                    />
-                  )}
-                  {repo.language}
-                </span>
-              )}
+              {repo.language && (() => {
+                const iconSrc = TECH_ICONS[repo.language.toLowerCase()];
+                return (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-foreground/80">
+                    {iconSrc ? (
+                      <span className="w-3.5 h-3.5 shrink-0 flex items-center justify-center overflow-visible">
+                        <img
+                          src={iconSrc}
+                          alt={repo.language}
+                          className={getTechIconClass(repo.language, "row")}
+                        />
+                      </span>
+                    ) : dotColor ? (
+                      <span className="w-3.5 h-3.5 shrink-0 flex items-center justify-center">
+                        <span 
+                          className="w-1.5 h-1.5 rounded-full shrink-0" 
+                          style={{ backgroundColor: dotColor }} 
+                        />
+                      </span>
+                    ) : null}
+                    {repo.language}
+                  </span>
+                );
+              })()}
 
-              {repo.technologies.slice(0, 3).map((tech) => (
+              {displayTechnologies.map((tech) => (
                 <span
                   key={tech}
                   className="text-[10px] text-muted-foreground px-1.5 py-0.2 rounded-xs bg-muted/60"
@@ -151,16 +173,27 @@ export function RepositoryRow({
                   {tech}
                 </span>
               ))}
-
-              {/* Difficulty breakdown if present */}
-              {(repo.difficultyBreakdown.beginner > 0 || repo.difficultyBreakdown.intermediate > 0) && (
-                <span className="text-[10px] text-muted-foreground font-mono hidden lg:inline">
-                  · {repo.difficultyBreakdown.beginner} beginner
-                  {repo.difficultyBreakdown.intermediate > 0 && `, ${repo.difficultyBreakdown.intermediate} intermediate`}
-                </span>
-              )}
             </div>
           </div>
+        </div>
+
+        {/* DIFFICULTY BREAKDOWN (Dedicated middle column, stacked vertically, balanced tone) */}
+        <div className="hidden sm:flex flex-col items-start justify-center gap-0.5 shrink-0 px-2 min-w-[120px] text-xs font-medium leading-tight">
+          {repo.difficultyBreakdown.beginner > 0 && (
+            <span className="text-emerald-600 dark:text-emerald-400/90 whitespace-nowrap">
+              {repo.difficultyBreakdown.beginner} Good first
+            </span>
+          )}
+          {repo.difficultyBreakdown.intermediate > 0 && (
+            <span className="text-amber-600/95 dark:text-amber-400/85 whitespace-nowrap">
+              {repo.difficultyBreakdown.intermediate} Intermediate
+            </span>
+          )}
+          {repo.difficultyBreakdown.advanced > 0 && (
+            <span className="text-rose-600/95 dark:text-rose-400/85 whitespace-nowrap">
+              {repo.difficultyBreakdown.advanced} Advanced
+            </span>
+          )}
         </div>
 
         {/* METRICS & SCORES */}
@@ -168,7 +201,14 @@ export function RepositoryRow({
           {/* Match Score */}
           {repo.topMatchScore != null && (
             <div className="flex flex-col items-end">
-              <span className="text-xs font-bold font-mono text-emerald-600 dark:text-emerald-400">
+              <span className={cn(
+                "text-xs font-mono",
+                repo.topMatchScore >= 80
+                  ? "font-bold text-emerald-600 dark:text-emerald-400"
+                  : repo.topMatchScore >= 60
+                  ? "font-semibold text-foreground"
+                  : "font-medium text-muted-foreground"
+              )}>
                 {repo.topMatchScore}%
               </span>
               <span className="text-[9px] uppercase tracking-wider text-muted-foreground">
@@ -231,18 +271,6 @@ export function RepositoryRow({
                           >
                             {issue.issueTitle}
                           </span>
-                          {issue.complexity && (
-                            <span className={cn(
-                              "text-[10px] px-1.5 py-0.2 rounded-xs font-medium capitalize",
-                              issue.complexity.toLowerCase().includes("beginner") || issue.complexity.toLowerCase().includes("good")
-                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                                : issue.complexity.toLowerCase().includes("intermediate")
-                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                                : "bg-muted text-muted-foreground"
-                            )}>
-                              {issue.complexity}
-                            </span>
-                          )}
                         </div>
 
                         {/* Match Reason preview */}
@@ -253,10 +281,36 @@ export function RepositoryRow({
                         )}
                       </div>
 
+                      {/* Difficulty column (aligned with parent repository row) */}
+                      <div className="hidden sm:flex flex-col items-start justify-center shrink-0 px-2 min-w-[120px] text-xs font-medium leading-tight">
+                        {issue.complexity && (() => {
+                          const cLower = issue.complexity.toLowerCase();
+                          const isGood = cLower.includes("beginner") || cLower.includes("good");
+                          const isInter = cLower.includes("intermediate");
+                          const isAdv = cLower.includes("advanced");
+
+                          const textColor = isGood
+                            ? "text-emerald-600 dark:text-emerald-400/90"
+                            : isInter
+                            ? "text-amber-600/95 dark:text-amber-400/85"
+                            : isAdv
+                            ? "text-rose-600/95 dark:text-rose-400/85"
+                            : "text-muted-foreground";
+
+                          const label = isGood ? "Good first" : isInter ? "Intermediate" : isAdv ? "Advanced" : issue.complexity;
+
+                          return (
+                            <span className={cn("whitespace-nowrap", textColor)}>
+                              {label}
+                            </span>
+                          );
+                        })()}
+                      </div>
+
                       {/* Issue Row Actions */}
                       <div className="flex items-center gap-2 shrink-0">
                         {issue.matchScore != null && (
-                          <span className="text-[11px] font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                          <span className="text-[11px] font-mono font-medium text-muted-foreground">
                             {issue.matchScore}%
                           </span>
                         )}

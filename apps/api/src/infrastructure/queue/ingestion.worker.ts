@@ -169,6 +169,8 @@ export function startIngestionWorker() {
       connection: redis,
       prefix: `{stackaudit_${env.NODE_ENV}}`,
       concurrency: 1, // One job at a time to respect rate limits
+      drainDelay: 60, // Wait 60s when queue is empty (prevents high-frequency polling on serverless Redis)
+      stalledInterval: 300000, // Check stalled jobs every 5 mins instead of 30s
       limiter: {
         max: 1,
         duration: 1000,

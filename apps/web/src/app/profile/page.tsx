@@ -6,7 +6,7 @@ import { ProtectedRoute } from "@/components/layout/protected-route";
 import { Shell } from "@/components/layout/shell";
 import { useSession, listAccounts, linkSocial } from "@/lib/auth-client";
 import { fetchProfile, DeveloperProfile, getMatches, IssueMatch } from "@/lib/api";
-import { ProfileForm } from "@/components/profile/profile-form";
+import { ProfileForm, ProfileSection } from "@/components/profile/profile-form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,13 +22,14 @@ import {
 } from "lucide-react";
 import { ContributionBadges } from "@/components/profile/contribution-badges";
 import { DailyActivityCard } from "@/components/activity/daily-activity-card";
+import { ContributionHistoryCard } from "@/components/profile/contribution-history-card";
 
 export default function ProfilePage() {
   const { data: session } = useSession();
   const [profile, setProfile] = useState<DeveloperProfile | null>(null);
   const [matches, setMatches] = useState<IssueMatch[]>([]);
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
+  const [editingSection, setEditingSection] = useState<ProfileSection | null>(null);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [linkingGithub, setLinkingGithub] = useState(false);
 
@@ -36,12 +37,34 @@ export default function ProfilePage() {
     if (session?.user?.id) {
       // 1. Fetch developer profile
       fetchProfile(session.user.id)
-        .catch(async () => {
-          const { ingestProfile } = await import("@/lib/api");
-          return await ingestProfile();
-        })
         .then(p => setProfile(p))
-        .catch(e => console.error("Profile not found or error:", e))
+        .catch(async () => {
+          // If profile not yet created, check if GitHub account is connected before attempting ingest
+          try {
+            const accRes = await listAccounts();
+            const accountsList = accRes.data || [];
+            const isGithubLinked = accountsList.some((acc: any) => acc.providerId === "github");
+            if (isGithubLinked) {
+              const { ingestProfile } = await import("@/lib/api");
+              const ingested = await ingestProfile();
+              setProfile(ingested);
+              return;
+            }
+          } catch {
+            // Silently fall back to default empty profile
+          }
+          // Default fallback profile structure
+          setProfile({
+            userId: session.user.id,
+            githubBio: "",
+            observedLanguages: [],
+            currentFocus: [],
+            learningGoals: [],
+            preferredComplexity: "Beginner-friendly",
+            preferredArea: "Any",
+            preferredContributionTypes: ["Bug Fix", "Documentation", "Feature"]
+          });
+        })
         .finally(() => setLoadingProfile(false));
       
       // 2. Fetch linked social accounts
@@ -71,15 +94,19 @@ export default function ProfilePage() {
 
   const getInitials = (name?: string) => name ? name.substring(0, 2).toUpperCase() : "SA";
 
-  // Derive accurate contribution summary numbers
-  const startedMatches = matches.filter(m => ["STARTED", "PR_SUBMITTED", "MERGED"].includes(m.status));
+  // Derive accurate contribution summary numbers based on authentic StackAudit open-source journey
+  const engagedMatches = matches.filter(m => m.status && m.status !== "DISCOVERED");
+  const qualifyingMatches = matches.filter(m => ["STARTED", "PR_SUBMITTED", "MERGED"].includes(m.status));
   const prMatches = matches.filter(m => ["PR_SUBMITTED", "MERGED"].includes(m.status));
-  const analyzedMatches = matches.filter(m => ["ANALYZED", "STARTED", "PR_SUBMITTED", "MERGED"].includes(m.status));
+  const analyzedMatches = matches.filter(m => ["ANALYZED", "STARTED", "PR_SUBMITTED", "MERGED"].includes(m.status) || Boolean((m as any).analysis));
+  const engagedRepos = new Set(
+    engagedMatches.map(m => m.repository).filter(Boolean)
+  );
 
-  const totalContributions = Math.max(profile?.totalContributions || 0, startedMatches.length);
-  const totalRepos = Math.max(profile?.publicRepoCount || 0, new Set(matches.map(m => m.repository)).size);
-  const totalAnalyzed = Math.max((profile as any)?.issueCount || 0, analyzedMatches.length);
-  const totalPrs = Math.max((profile as any)?.prCount || 0, prMatches.length);
+  const totalContributions = qualifyingMatches.length;
+  const totalRepos = engagedRepos.size;
+  const totalAnalyzed = analyzedMatches.length;
+  const totalPrs = prMatches.length;
 
   return (
     <ProtectedRoute>
@@ -89,140 +116,157 @@ export default function ProfilePage() {
             <div className="flex items-center gap-3 text-muted-foreground text-sm py-24 justify-center">
               <Loader2 className="w-4 h-4 animate-spin" /> Loading your developer context...
             </div>
-          ) : isEditing ? (
+          ) : editingSection ? (
             <div className="max-w-2xl mx-auto py-8">
               <div className="flex items-center justify-between mb-6">
-                <h1 className="text-xl font-semibold tracking-tight">Edit Developer Profile</h1>
-                <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>
+                <div>
+                  <h1 className="text-xl font-semibold tracking-tight text-foreground">Edit Developer Profile</h1>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {editingSection === "tech_stack" && "Update your core programming languages and tech stack."}
+                    {editingSection === "focus" && "Update your current focus and learning goals."}
+                    {editingSection === "preferences" && "Update your contribution complexity and preferred types."}
+                    {editingSection === "all" && "Update your developer profile, stack, and contribution preferences."}
+                  </p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setEditingSection(null)} className="cursor-pointer">
                   Cancel
                 </Button>
               </div>
               <ProfileForm 
                 initialData={profile || undefined} 
+                initialSection={editingSection}
+                onCancel={() => setEditingSection(null)}
                 onSubmit={async (data) => {
                   const { updateProfile } = await import("@/lib/api");
                   const updated = await updateProfile(session!.user.id, data);
                   setProfile(updated);
-                  setIsEditing(false);
+                  setEditingSection(null);
                 }}
                 submitLabel="Save Changes"
               />
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              
-              {/* ============================================================ */}
-              {/* LEFT COLUMN: Profile Identity, History, Stack & Readiness    */}
-              {/* ============================================================ */}
-              <div className="lg:col-span-5 space-y-6">
-                
-                {/* 1. PROFILE IDENTITY + CONTRIBUTION HISTORY (Single cohesive card) */}
-                <div className="rounded-2xl border border-border/60 bg-card/50 backdrop-blur-xs p-6 shadow-xs space-y-6">
-                  {/* Avatar & Info */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-4">
-                      <div className="relative shrink-0">
-                        <Avatar className="h-16 w-16 border-2 border-border shadow-xs">
-                          <AvatarImage src={session?.user?.image || ""} />
-                          <AvatarFallback className="text-lg bg-secondary text-secondary-foreground font-semibold">
-                            {getInitials(session?.user?.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        {/* Status dot indicator */}
-                        <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-background" />
-                      </div>
-
-                      <div className="space-y-1">
-                        <h1 className="text-lg font-semibold tracking-tight text-foreground">
-                          {session?.user?.name}
-                        </h1>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>@{session?.user?.name?.toLowerCase().replace(/\s+/g, "") || "developer"}</span>
-                          <Github className="w-3 h-3 text-muted-foreground" />
+            <div className="space-y-8">
+              {/* TOP ROW: Profile Identity & Achievements aligned on the exact same horizontal baseline */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+                <div className="lg:col-span-5 flex flex-col">
+                  {/* 1. PROFILE IDENTITY + CONTRIBUTION HISTORY (Single cohesive card) */}
+                  <div className="rounded-2xl border border-border/60 bg-card/50 backdrop-blur-xs p-6 shadow-xs space-y-6 flex-1 flex flex-col justify-between">
+                    {/* Avatar & Info */}
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-4">
+                        <div className="relative shrink-0">
+                          <Avatar className="h-16 w-16 border-2 border-border shadow-xs">
+                            <AvatarImage src={session?.user?.image || ""} />
+                            <AvatarFallback className="text-lg bg-secondary text-secondary-foreground font-semibold">
+                              {getInitials(session?.user?.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          {/* Status dot indicator */}
+                          <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-background" />
                         </div>
-                        <p className="text-xs text-muted-foreground/90 line-clamp-2 pt-0.5">
-                          {profile?.githubBio || "Building with open source • Lifelong learner"}
-                        </p>
+
+                        <div className="space-y-1">
+                          <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                            {session?.user?.name}
+                          </h1>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>@{session?.user?.name?.toLowerCase().replace(/\s+/g, "") || "developer"}</span>
+                            <Github className="w-3 h-3 text-muted-foreground" />
+                          </div>
+                          <p className="text-xs text-muted-foreground/90 line-clamp-2 pt-0.5">
+                            {profile?.githubBio || "Building with open source • Lifelong learner"}
+                          </p>
+                        </div>
                       </div>
-                    </div>
 
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setIsEditing(true)} 
-                      className="h-8 px-2.5 text-xs gap-1.5 shrink-0 hover:bg-secondary cursor-pointer"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                      Edit Profile
-                    </Button>
-                  </div>
-
-                  {/* 2. CONTRIBUTION HISTORY (Directly underneath header per spec) */}
-                  <div className="border-t border-border/50 pt-5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Contribution History
-                      </h3>
-                      <Link 
-                        href="/saved" 
-                        className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setEditingSection("all")} 
+                        className="h-8 px-2.5 text-xs gap-1.5 shrink-0 hover:bg-secondary cursor-pointer"
                       >
-                        View all <ArrowRight className="w-3 h-3" />
-                      </Link>
+                        <Pencil className="w-3.5 h-3.5" />
+                        Edit Profile
+                      </Button>
                     </div>
 
-                    {/* Compact Horizontal Statistics Row */}
-                    <div className="grid grid-cols-4 gap-2 pt-1">
-                      <div className="space-y-0.5">
-                        <p className="text-lg font-semibold tracking-tight text-foreground">
-                          {totalContributions}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground leading-tight">
-                          Contributions
-                        </p>
+                    {/* 2. CONTRIBUTION HISTORY (Directly underneath header per spec) */}
+                    <div className="border-t border-border/50 pt-5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          Contribution History
+                        </h3>
+                        <Link 
+                          href="#contribution-history" 
+                          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          View all <ArrowRight className="w-3 h-3" />
+                        </Link>
                       </div>
 
-                      <div className="space-y-0.5">
-                        <p className="text-lg font-semibold tracking-tight text-foreground">
-                          {totalRepos}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground leading-tight">
-                          Repositories
-                        </p>
-                      </div>
+                      {/* Compact Horizontal Statistics Row */}
+                      <div className="grid grid-cols-4 gap-2 pt-1">
+                        <div className="space-y-0.5">
+                          <p className="text-lg font-semibold tracking-tight text-foreground">
+                            {totalContributions}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground leading-tight">
+                            Contributions
+                          </p>
+                        </div>
 
-                      <div className="space-y-0.5">
-                        <p className="text-lg font-semibold tracking-tight text-foreground">
-                          {totalAnalyzed}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground leading-tight">
-                          Issues Analyzed
-                        </p>
-                      </div>
+                        <div className="space-y-0.5">
+                          <p className="text-lg font-semibold tracking-tight text-foreground">
+                            {totalRepos}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground leading-tight">
+                            Repositories
+                          </p>
+                        </div>
 
-                      <div className="space-y-0.5">
-                        <p className="text-lg font-semibold tracking-tight text-foreground">
-                          {totalPrs}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground leading-tight">
-                          PRs Submitted
-                        </p>
+                        <div className="space-y-0.5">
+                          <p className="text-lg font-semibold tracking-tight text-foreground">
+                            {totalAnalyzed}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground leading-tight">
+                            Issues Analyzed
+                          </p>
+                        </div>
+
+                        <div className="space-y-0.5">
+                          <p className="text-lg font-semibold tracking-tight text-foreground">
+                            {totalPrs}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground leading-tight">
+                            PRs Submitted
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* 2. DAILY ACTIVITY (Last 30 days active-time signal) */}
-                <DailyActivityCard />
+                {/* Achievements Card (Stretched to match Profile card height) */}
+                <div className="lg:col-span-7 flex flex-col">
+                  <ContributionBadges userId={session?.user?.id} className="h-full" />
+                </div>
+              </div>
 
-                {/* 3. TECH STACK */}
+              {/* FULL-WIDTH ROW: Daily Activity (1-Year Heatmap) */}
+              <DailyActivityCard />
+
+              {/* LOWER ROW: Remaining profile cards */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <div className="lg:col-span-5 space-y-6">
+                  {/* TECH STACK */}
                 <div className="rounded-2xl border border-border/60 bg-card/50 backdrop-blur-xs p-6 shadow-xs space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Tech Stack
                     </h3>
                     <button 
-                      onClick={() => setIsEditing(true)} 
+                      onClick={() => setEditingSection("tech_stack")} 
                       className="text-muted-foreground hover:text-foreground text-xs flex items-center gap-1 cursor-pointer"
                     >
                       <Pencil className="w-3 h-3" /> Edit
@@ -248,7 +292,7 @@ export default function ProfilePage() {
                       Focus & Learning
                     </h3>
                     <button 
-                      onClick={() => setIsEditing(true)} 
+                      onClick={() => setEditingSection("focus")} 
                       className="text-muted-foreground hover:text-foreground text-xs flex items-center gap-1 cursor-pointer"
                     >
                       <Pencil className="w-3 h-3" /> Edit
@@ -293,7 +337,7 @@ export default function ProfilePage() {
                       Contribution Preferences
                     </h3>
                     <button 
-                      onClick={() => setIsEditing(true)} 
+                      onClick={() => setEditingSection("preferences")} 
                       className="text-muted-foreground hover:text-foreground text-xs flex items-center gap-1 cursor-pointer"
                     >
                       <Pencil className="w-3 h-3" /> Edit
@@ -366,15 +410,13 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-              </div>
+                </div>
 
-              {/* ============================================================ */}
-              {/* RIGHT COLUMN: Contribution Badges Gallery                    */}
-              {/* ============================================================ */}
-              <div className="lg:col-span-7">
-                <ContributionBadges />
+                {/* Right side: Detailed Contribution History Section */}
+                <div className="lg:col-span-7">
+                  <ContributionHistoryCard initialMatches={matches} userId={session?.user?.id} />
+                </div>
               </div>
-
             </div>
           )}
         </div>

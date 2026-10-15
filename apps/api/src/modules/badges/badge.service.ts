@@ -159,30 +159,74 @@ export class BadgeService {
       }
     }
 
+    function safeToIsoString(d: any): string | null {
+      if (!d) return null;
+      try {
+        const date = d instanceof Date ? d : new Date(d);
+        return isNaN(date.getTime()) ? null : date.toISOString();
+      } catch {
+        return null;
+      }
+    }
+
     // Earliest qualifying timestamps for earnedAt
     const firstContribDate = qualifyingIssues.length > 0 
-      ? qualifyingIssues[0].earliestTimestamp.toISOString() 
+      ? safeToIsoString(qualifyingIssues[0].earliestTimestamp) 
       : null;
 
     const firstPrDate = prIssues.length > 0 
-      ? prIssues[0].earliestTimestamp.toISOString() 
+      ? safeToIsoString(prIssues[0].earliestTimestamp) 
       : null;
 
     const mergedDate = mergedIssues.length > 0 
-      ? mergedIssues[0].earliestTimestamp.toISOString() 
+      ? safeToIsoString(mergedIssues[0].earliestTimestamp) 
       : null;
 
     const contrib5Date = qualifyingIssues.length >= 5 
-      ? qualifyingIssues[4].earliestTimestamp.toISOString() 
+      ? safeToIsoString(qualifyingIssues[4].earliestTimestamp) 
       : null;
 
     const contrib10Date = qualifyingIssues.length >= 10 
-      ? qualifyingIssues[9].earliestTimestamp.toISOString() 
+      ? safeToIsoString(qualifyingIssues[9].earliestTimestamp) 
       : null;
 
     const explorerDate = exploredIssues.length >= 5
-      ? exploredIssues[4].earliestTimestamp.toISOString()
+      ? safeToIsoString(exploredIssues[4].earliestTimestamp)
       : null;
+
+    // Derived timestamp for 5 explored repositories
+    let repoExplorerDate: string | null = null;
+    const seenExploredRepos = new Set<string>();
+    for (const issue of exploredIssues) {
+      if (issue.repository) seenExploredRepos.add(issue.repository);
+      if (seenExploredRepos.size >= 5) {
+        repoExplorerDate = safeToIsoString(issue.earliestTimestamp);
+        break;
+      }
+    }
+
+    // Derived timestamp for 3 distinct technologies
+    let multiStackDate: string | null = null;
+    const seenTechs = new Set<string>();
+    for (const issue of qualifyingIssues) {
+      for (const t of issue.technologies) seenTechs.add(t);
+      if (issue.repoLanguage) seenTechs.add(issue.repoLanguage);
+      if (seenTechs.size >= 3) {
+        multiStackDate = safeToIsoString(issue.earliestTimestamp);
+        break;
+      }
+    }
+
+    // Derived timestamp for 3 qualifying repositories
+    let repoContribDate: string | null = null;
+    const seenQualifyingRepos = new Set<string>();
+    for (const issue of qualifyingIssues) {
+      if (issue.repository) seenQualifyingRepos.add(issue.repository);
+      if (seenQualifyingRepos.size >= 3) {
+        repoContribDate = safeToIsoString(issue.earliestTimestamp);
+        break;
+      }
+    }
 
     return [
       {
@@ -244,7 +288,7 @@ export class BadgeService {
         name: "Repository Explorer",
         description: "Analyze or explore at least 5 different repositories.",
         earned: exploredRepos.size >= 5,
-        earnedAt: null, // derived across set
+        earnedAt: repoExplorerDate,
         current: Math.min(exploredRepos.size, 5),
         target: 5
       },
@@ -253,7 +297,7 @@ export class BadgeService {
         name: "Multi-Stack",
         description: "Contribute across at least 3 different technologies.",
         earned: qualifyingTechs.size >= 3,
-        earnedAt: null, // derived across set
+        earnedAt: multiStackDate,
         current: Math.min(qualifyingTechs.size, 3),
         target: 3
       },
@@ -262,7 +306,7 @@ export class BadgeService {
         name: "Repository Contributor",
         description: "Reach STARTED or beyond in at least 3 different repositories.",
         earned: qualifyingRepos.size >= 3,
-        earnedAt: null, // derived across set
+        earnedAt: repoContribDate,
         current: Math.min(qualifyingRepos.size, 3),
         target: 3
       }

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { 
@@ -114,6 +114,8 @@ export function DiscoveryDashboard() {
   // Expanded Repositories in repo view
   const [expandedRepo, setExpandedRepo] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState<number>(15);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const observerTargetRef = useRef<HTMLDivElement>(null);
 
   // Initial Data Fetch with LocalStorage caching
   const loadInitialData = useCallback(async (userId: string, forceRefresh = false) => {
@@ -134,8 +136,20 @@ export function DiscoveryDashboard() {
       if (cached.contributionProgress) setContributionProgress(cached.contributionProgress);
       setLoadingInitial(false);
 
-      // If fresh, return immediately — ZERO database or API queries!
-      if (isCacheFresh && cached.matches?.length > 0) {
+      const userObserved = (cached.profile?.observedLanguages || []).map(l => l.toLowerCase());
+      const hasStaleCache = userObserved.length > 0 && cached.matches.slice(0, 15).some(m => {
+        const reasons = m.reasons || [];
+        return reasons.some(r => {
+          const match = r.match(/Strong language match:\s*([^ (]+)/i);
+          if (match && match[1]) {
+            return !userObserved.includes(match[1].toLowerCase());
+          }
+          return false;
+        });
+      });
+
+      // If fresh, has healthy match coverage, and has no stale matches, return immediately — ZERO database or API queries!
+      if (isCacheFresh && cached.matches && cached.matches.length >= 15 && !hasStaleCache) {
         return;
       }
     } else {
@@ -150,6 +164,12 @@ export function DiscoveryDashboard() {
         p = await ingestProfile().catch(() => null);
       }
       if (p) setProfile(p);
+
+      // If user hasn't completed contributor onboarding, guide them to /onboarding
+      if (p && p.hasCompletedOnboarding === false) {
+        router.push("/onboarding");
+        return;
+      }
 
       // 2. Fetch matches (existing or discover)
       let currentMatches = await getMatches(userId).catch(() => []);
@@ -427,32 +447,95 @@ export function DiscoveryDashboard() {
     return matches.filter(m => m.status === "SAVED").length;
   }, [matches]);
 
+  // Reset visibleCount when filters change
+  useEffect(() => {
+    setVisibleCount(15);
+  }, [selectedTechnology, searchQuery, difficulty, viewMode, goodFirstIssueOnly, savedOnly, sortBy]);
+
+  // Infinite Scroll Trigger & Observer
+  const totalItemsCount = viewMode === "repositories" ? filteredRepositories.length : filteredIssues.length;
+  const hasMore = visibleCount < totalItemsCount;
+
+  const triggerLoadMore = useCallback(() => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    setTimeout(() => {
+      setVisibleCount((prev) => prev + 15);
+      setIsLoadingMore(false);
+    }, 1000); // Exactly 1 second delay with 3-dots indicator per user request
+  }, [isLoadingMore, hasMore]);
+
+  useEffect(() => {
+    if (!hasMore || isLoadingMore) return;
+
+    // The scroll container is <main> in Shell.tsx
+    const scrollContainer = observerTargetRef.current?.closest("main") || document.querySelector("main") || window;
+
+    // 1. Direct Scroll Listener on the scrolling container (<main>)
+    const handleScroll = () => {
+      if (scrollContainer instanceof HTMLElement) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+        if (scrollHeight - scrollTop - clientHeight < 250) {
+          triggerLoadMore();
+        }
+      } else {
+        const scrollY = window.scrollY;
+        const totalHeight = document.documentElement.scrollHeight;
+        const viewportHeight = window.innerHeight;
+        if (totalHeight - scrollY - viewportHeight < 250) {
+          triggerLoadMore();
+        }
+      }
+    };
+
+    scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
+
+    // 2. IntersectionObserver bound to the scrollContainer
+    let observer: IntersectionObserver | null = null;
+    const currentTarget = observerTargetRef.current;
+    if (currentTarget) {
+      try {
+        observer = new IntersectionObserver(
+          (entries) => {
+            if (entries[0]?.isIntersecting) {
+              triggerLoadMore();
+            }
+          },
+          {
+            root: scrollContainer instanceof HTMLElement ? scrollContainer : null,
+            rootMargin: "250px",
+            threshold: 0,
+          }
+        );
+        observer.observe(currentTarget);
+      } catch {
+        // Fallback already handled by scroll listener
+      }
+    }
+
+    // Check once immediately in case sentinel is already in view
+    handleScroll();
+
+    return () => {
+      scrollContainer.removeEventListener("scroll", handleScroll);
+      if (observer && currentTarget) {
+        observer.unobserve(currentTarget);
+        observer.disconnect();
+      }
+    };
+  }, [hasMore, isLoadingMore, triggerLoadMore, totalItemsCount]);
+
   return (
     <div className="w-full space-y-5 animate-in fade-in duration-300">
       
       {/* 1. TOP HEADER & TITLE */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">
-            Discover Contributions
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Explore open-source repositories and issues matched to your developer profile.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={() => session?.user?.id && loadInitialData(session.user.id, true)}
-            disabled={loadingInitial || loadingDiscover}
-            className="h-8 px-2.5 text-xs font-medium rounded-sm border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors inline-flex items-center gap-1.5"
-            title="Refresh discovery feed"
-          >
-            <RotateCw className={cn("w-3.5 h-3.5", (loadingInitial || loadingDiscover) && "animate-spin")} />
-            <span>Refresh</span>
-          </button>
-        </div>
+      <div className="pb-3 border-b border-border">
+        <h1 className="text-xl font-bold tracking-tight text-foreground">
+          Discover Contributions
+        </h1>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Explore open-source repositories and issues matched to your developer profile.
+        </p>
       </div>
 
       {/* 2. COMPACT TECHNOLOGY EXPLORER */}
@@ -540,17 +623,38 @@ export function DiscoveryDashboard() {
                   />
                 ))}
 
-                {visibleCount < filteredRepositories.length && (
-                  <div className="pt-2 flex justify-center">
-                    <button
-                      type="button"
-                      onClick={() => setVisibleCount(prev => prev + 15)}
-                      className="text-xs font-medium text-muted-foreground hover:text-foreground py-1.5 px-4 rounded-xs border border-border bg-card hover:bg-muted/50 transition-colors"
-                    >
-                      Load more repositories ({filteredRepositories.length - visibleCount} remaining)
-                    </button>
+                {visibleCount < filteredRepositories.length ? (
+                  <div
+                    ref={viewMode === "repositories" ? observerTargetRef : undefined}
+                    onClick={triggerLoadMore}
+                    className="py-6 flex flex-col items-center justify-center gap-2 cursor-pointer select-none"
+                    title="Scroll down or click to load more"
+                  >
+                    <div className="flex items-center gap-2 py-1">
+                      <span className={cn(
+                        "w-2.5 h-2.5 rounded-full transition-colors",
+                        isLoadingMore ? "bg-foreground/80 animate-bounce [animation-delay:-0.3s]" : "bg-muted-foreground/60"
+                      )} />
+                      <span className={cn(
+                        "w-2.5 h-2.5 rounded-full transition-colors",
+                        isLoadingMore ? "bg-foreground/60 animate-bounce [animation-delay:-0.15s]" : "bg-muted-foreground/45"
+                      )} />
+                      <span className={cn(
+                        "w-2.5 h-2.5 rounded-full transition-colors",
+                        isLoadingMore ? "bg-foreground/40 animate-bounce" : "bg-muted-foreground/30"
+                      )} />
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">
+                      {isLoadingMore
+                        ? "Loading more repositories..."
+                        : `Loading more repositories... (${filteredRepositories.length - visibleCount} remaining)`}
+                    </span>
                   </div>
-                )}
+                ) : filteredRepositories.length > 15 ? (
+                  <div className="py-5 text-center text-[11px] text-muted-foreground border-t border-border/30 mt-2">
+                    All {filteredRepositories.length} repositories loaded
+                  </div>
+                ) : null}
               </div>
             )
           ) : (
@@ -581,17 +685,38 @@ export function DiscoveryDashboard() {
                   />
                 ))}
 
-                {visibleCount < filteredIssues.length && (
-                  <div className="pt-2 flex justify-center">
-                    <button
-                      type="button"
-                      onClick={() => setVisibleCount(prev => prev + 15)}
-                      className="text-xs font-medium text-muted-foreground hover:text-foreground py-1.5 px-4 rounded-xs border border-border bg-card hover:bg-muted/50 transition-colors"
-                    >
-                      Load more issues ({filteredIssues.length - visibleCount} remaining)
-                    </button>
+                {visibleCount < filteredIssues.length ? (
+                  <div
+                    ref={viewMode === "issues" ? observerTargetRef : undefined}
+                    onClick={triggerLoadMore}
+                    className="py-6 flex flex-col items-center justify-center gap-2 cursor-pointer select-none"
+                    title="Scroll down or click to load more"
+                  >
+                    <div className="flex items-center gap-2 py-1">
+                      <span className={cn(
+                        "w-2.5 h-2.5 rounded-full transition-colors",
+                        isLoadingMore ? "bg-foreground/80 animate-bounce [animation-delay:-0.3s]" : "bg-muted-foreground/60"
+                      )} />
+                      <span className={cn(
+                        "w-2.5 h-2.5 rounded-full transition-colors",
+                        isLoadingMore ? "bg-foreground/60 animate-bounce [animation-delay:-0.15s]" : "bg-muted-foreground/45"
+                      )} />
+                      <span className={cn(
+                        "w-2.5 h-2.5 rounded-full transition-colors",
+                        isLoadingMore ? "bg-foreground/40 animate-bounce" : "bg-muted-foreground/30"
+                      )} />
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">
+                      {isLoadingMore
+                        ? "Loading more issues..."
+                        : `Loading more issues... (${filteredIssues.length - visibleCount} remaining)`}
+                    </span>
                   </div>
-                )}
+                ) : filteredIssues.length > 15 ? (
+                  <div className="py-5 text-center text-[11px] text-muted-foreground border-t border-border/30 mt-2">
+                    All {filteredIssues.length} issues loaded
+                  </div>
+                ) : null}
               </div>
             )
           )}

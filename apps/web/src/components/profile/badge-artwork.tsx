@@ -167,7 +167,10 @@ const LOCKED_PALETTE: BadgePalette = {
   iconStroke: "#cbd5e1",
 };
 
+export { ContributionBadgeArtwork as BadgeArtwork };
+
 export function ContributionBadgeArtwork({ type, earned, className }: BadgeArtworkProps) {
+
   const p = earned ? (PALETTES[type] || PALETTES.FIRST_CONTRIBUTION) : LOCKED_PALETTE;
   const filterId = `glow-${type}-${earned ? "earned" : "locked"}`;
   const gradOuter = `grad-outer-${type}-${earned ? "earned" : "locked"}`;

@@ -69,7 +69,7 @@ export function RepositoryContext({
       id: "architecture",
       label: "Architecture",
       content: (
-        <div className="text-sm leading-relaxed text-foreground/90 space-y-3">
+        <div className="text-sm leading-relaxed text-foreground space-y-3">
           {hasArchitecture ? (
             <div>
               <div
@@ -80,7 +80,7 @@ export function RepositoryContext({
                     : ""
                 )}
               >
-                <p className="whitespace-pre-line text-sm text-foreground/80 leading-relaxed font-sans">
+                <p className="whitespace-pre-line text-sm text-foreground leading-relaxed font-sans">
                   {architectureText}
                 </p>
                 {!isArchitectureExpanded && isArchitectureLong && (
@@ -132,7 +132,7 @@ export function RepositoryContext({
                   <Badge
                     key={idx}
                     variant="secondary"
-                    className="font-mono text-xs px-2.5 py-1 bg-secondary text-foreground border border-border/80 font-normal"
+                    className="font-mono text-xs px-2.5 py-1 bg-secondary text-foreground border border-border font-normal"
                   >
                     {tech}
                   </Badge>
@@ -167,7 +167,7 @@ export function RepositoryContext({
                     <span className="text-foreground truncate mr-2" title={dir}>
                       {dir}/
                     </span>
-                    <span className="text-[11px] text-muted-foreground shrink-0">
+                    <span className="text-xs text-muted-foreground shrink-0">
                       {info.count} {info.count === 1 ? "file" : "files"}
                     </span>
                   </div>

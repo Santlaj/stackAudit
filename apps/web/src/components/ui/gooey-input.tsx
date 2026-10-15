@@ -37,7 +37,7 @@ function GooeyFilter({
   );
 }
 
-function SearchIcon({ layoutId }: { layoutId: string }) {
+function SearchIcon({ layoutId, className }: { layoutId: string; className?: string }) {
   return (
     <motion.svg
       layoutId={layoutId}
@@ -48,7 +48,7 @@ function SearchIcon({ layoutId }: { layoutId: string }) {
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={2}
-      className="size-4 shrink-0"
+      className={cn("size-3.5 shrink-0 text-muted-foreground", className)}
     >
       <circle cx="11" cy="11" r="8" />
       <path d="m21 21-4.3-4.3" />
@@ -94,6 +94,7 @@ export interface GooeyInputProps {
   onValueChange?: (value: string) => void;
   onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
+  size?: "sm" | "default";
 }
 
 export function GooeyInput({
@@ -101,14 +102,15 @@ export function GooeyInput({
   className,
   classNames,
   collapsedWidth = 115,
-  expandedWidth = 200,
-  expandedOffset = 50,
+  expandedWidth = 240,
+  expandedOffset = 40,
   gooeyBlur = 5,
   value: valueProp,
   defaultValue = "",
   onValueChange,
   onOpenChange,
   disabled = false,
+  size = "default",
 }: GooeyInputProps) {
   const reactId = useId();
   const safeId = reactId.replace(/:/g, "");
@@ -116,9 +118,13 @@ export function GooeyInput({
   const iconLayoutId = `gooey-input-icon-${safeId}`;
   const inputLayoutId = `gooey-input-field-${safeId}`;
 
+  const isSmall = size === "sm";
+  const heightClass = isSmall ? "h-8" : "h-10";
+  const sizeBubbleClass = isSmall ? "size-8" : "size-10";
+
   const inputRef = useRef<HTMLInputElement>(null);
   const prevExpandedRef = useRef(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(() => Boolean(valueProp || defaultValue));
   const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
 
   const isControlled = valueProp !== undefined;
@@ -141,6 +147,24 @@ export function GooeyInput({
     },
     [onOpenChange],
   );
+
+  useEffect(() => {
+    if (valueProp && !isExpanded) {
+      setIsExpanded(true);
+    }
+  }, [valueProp, isExpanded]);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setExpanded(true);
+        inputRef.current?.focus();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [setExpanded]);
 
   useEffect(() => {
     if (isExpanded) {
@@ -175,7 +199,7 @@ export function GooeyInput({
   }, [searchText, setExpanded]);
 
   const surfaceClass =
-    "bg-foreground text-background shadow-sm ring-1 ring-border/60";
+    "bg-card text-foreground border border-border shadow-xs hover:border-foreground/30 focus-within:border-foreground/40";
 
   return (
     <div
@@ -189,13 +213,14 @@ export function GooeyInput({
 
       <div
         className={cn(
-          "relative flex h-10 items-center justify-center",
+          "relative flex items-center justify-center",
+          heightClass,
           classNames?.filterWrap,
         )}
         style={{ filter: `url(#${filterId})` }}
       >
         <motion.div
-          className={cn("flex h-10 items-center justify-center", classNames?.buttonRow)}
+          className={cn("flex items-center justify-center", heightClass, classNames?.buttonRow)}
           variants={buttonVariants}
           initial="collapsed"
           animate={isExpanded ? "expanded" : "collapsed"}
@@ -206,7 +231,8 @@ export function GooeyInput({
             disabled={disabled}
             onClick={handleExpand}
             className={cn(
-              "flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-full px-4 text-sm font-medium outline-none transition-[color,box-shadow] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50",
+              "flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-full px-3 text-xs font-medium outline-none transition-[color,box-shadow] focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50",
+              heightClass,
               surfaceClass,
               classNames?.trigger,
             )}
@@ -226,19 +252,45 @@ export function GooeyInput({
               disabled={disabled || !isExpanded}
               placeholder={placeholder}
               className={cn(
-                "h-full min-w-0 flex-1 bg-transparent text-sm text-background outline-none",
-                isExpanded
-                  ? "placeholder:text-background/50 dark:placeholder:text-background/45"
-                  : "pointer-events-none placeholder:text-background/80 dark:placeholder:text-background/70",
+                "h-full min-w-0 flex-1 bg-transparent text-foreground outline-none",
+                isSmall ? "text-xs" : "text-sm",
+                "placeholder:text-muted-foreground",
                 classNames?.input,
               )}
             />
+            {isExpanded && searchText ? (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSearchText("");
+                }}
+                className="text-muted-foreground hover:text-foreground p-0.5 cursor-pointer shrink-0"
+                title="Clear"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className={cn(isSmall ? "size-3" : "size-3.5")}
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </span>
+            ) : null}
           </button>
         </motion.div>
 
         <motion.div
           className={cn(
-            "absolute top-1/2 left-0 flex size-10 -translate-y-1/2 items-center justify-center",
+            "absolute top-1/2 left-0 flex -translate-y-1/2 items-center justify-center",
+            sizeBubbleClass,
             classNames?.bubble,
           )}
           variants={iconBubbleVariants}
@@ -248,7 +300,8 @@ export function GooeyInput({
         >
           <div
             className={cn(
-              "flex size-10 items-center justify-center rounded-full",
+              "flex items-center justify-center rounded-full",
+              sizeBubbleClass,
               surfaceClass,
               classNames?.bubbleSurface,
             )}

@@ -59,7 +59,7 @@ export function HintCard({
       ) : hintLevel === 1 ? (
         <div className="space-y-2.5">
           <div className="p-2.5 rounded bg-secondary/40 border border-border/70 text-xs leading-relaxed text-foreground">
-            <span className="font-semibold block mb-0.5 text-foreground/90">Hint 1 (Conceptual):</span>
+            <span className="font-semibold block mb-0.5 text-foreground">Hint 1 (Conceptual):</span>
             <p className="text-muted-foreground font-sans">{level1Hint}</p>
           </div>
 
@@ -73,7 +73,7 @@ export function HintCard({
               Still stuck? Show specific clue →
             </Button>
           ) : (
-            <p className="text-[11px] text-muted-foreground italic text-center">
+            <p className="text-xs text-muted-foreground italic text-center">
               No further hint available for this issue.
             </p>
           )}
@@ -81,13 +81,13 @@ export function HintCard({
       ) : (
         <div className="space-y-2.5">
           <div className="p-2.5 rounded bg-secondary/40 border border-border/70 text-xs leading-relaxed text-foreground">
-            <span className="font-semibold block mb-0.5 text-foreground/90">Hint 2 (Targeted):</span>
+            <span className="font-semibold block mb-0.5 text-foreground">Hint 2 (Targeted):</span>
             <p className="text-muted-foreground font-sans">{level2Hint}</p>
           </div>
           <button
             type="button"
             onClick={() => setHintLevel(0)}
-            className="text-[11px] text-muted-foreground hover:underline block text-center w-full"
+            className="text-xs text-muted-foreground hover:underline block text-center w-full"
           >
             Collapse hints
           </button>

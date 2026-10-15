@@ -43,7 +43,7 @@ export function FileTreeContext({ files }: FileTreeContextProps) {
               </span>
             </div>
             <div className="flex items-center gap-2 pl-6">
-              <ChevronRight className="h-3 w-3 text-muted-foreground/40" />
+              <ChevronRight className="h-3 w-3 text-muted-foreground" />
               <span className="text-xs text-muted-foreground capitalize">
                 {f.role} {f.source === "graphify" && "— Found via structural analysis"}
               </span>

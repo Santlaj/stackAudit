@@ -24,10 +24,22 @@ export default function HomePage() {
   const { data: session, isPending } = useSession();
   const router = useRouter();
 
-  // Redirect logged-in users to the app — the marketing page is for signups.
+  // Route logged-in users appropriately: /onboarding if not onboarded, or /discover
   React.useEffect(() => {
-    if (!isPending && session) {
-      router.push("/discover");
+    if (!isPending && session?.user?.id) {
+      import("@/lib/api").then(({ fetchProfile }) => {
+        fetchProfile(session.user.id)
+          .then((profile) => {
+            if (profile && profile.hasCompletedOnboarding) {
+              router.push("/discover");
+            } else {
+              router.push("/onboarding");
+            }
+          })
+          .catch(() => {
+            router.push("/onboarding");
+          });
+      });
     }
   }, [session, isPending, router]);
 

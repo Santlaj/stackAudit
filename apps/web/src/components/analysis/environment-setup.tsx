@@ -66,13 +66,13 @@ export function EnvironmentSetup({
             aria-checked={selectedOS === "unix"}
             onClick={() => handleSelectOS("unix")}
             className={cn(
-              "px-2 py-0.5 text-[10px] font-medium rounded transition-colors flex items-center gap-1 outline-none",
+              "px-2 py-0.5 text-xs font-medium rounded transition-colors flex items-center gap-1 outline-none",
               selectedOS === "unix"
                 ? "bg-card text-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <Apple className="h-2.5 w-2.5" />
+            <Apple className="h-3 w-3" />
             <span>macOS / Linux</span>
           </button>
           <button
@@ -81,13 +81,13 @@ export function EnvironmentSetup({
             aria-checked={selectedOS === "windows"}
             onClick={() => handleSelectOS("windows")}
             className={cn(
-              "px-2 py-0.5 text-[10px] font-medium rounded transition-colors flex items-center gap-1 outline-none",
+              "px-2 py-0.5 text-xs font-medium rounded transition-colors flex items-center gap-1 outline-none",
               selectedOS === "windows"
                 ? "bg-card text-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <Monitor className="h-2.5 w-2.5" />
+            <Monitor className="h-3 w-3" />
             <span>Windows</span>
           </button>
         </div>
@@ -103,22 +103,22 @@ export function EnvironmentSetup({
         </div>
 
         {/* Readiness Checklist */}
-        <div className="pt-2 border-t border-border/50 space-y-1.5 text-[11px]">
+        <div className="pt-2 border-t border-border/50 space-y-1.5 text-xs">
           <div className="flex justify-between items-center text-muted-foreground">
             <span>Runtime detection</span>
-            <span className="font-mono text-[10px] text-muted-foreground/70">Not specified</span>
+            <span className="font-mono text-xs text-muted-foreground">Not specified</span>
           </div>
           <div className="flex justify-between items-center text-muted-foreground">
             <span>Package manager</span>
-            <span className="font-mono text-[10px] text-muted-foreground/70">Not detected</span>
+            <span className="font-mono text-xs text-muted-foreground">Not detected</span>
           </div>
           <div className="flex justify-between items-center text-muted-foreground">
             <span>Dev command</span>
-            <span className="font-mono text-[10px] text-muted-foreground/70">Not available</span>
+            <span className="font-mono text-xs text-muted-foreground">Not available</span>
           </div>
           <div className="flex justify-between items-center text-muted-foreground">
             <span>Environment variables</span>
-            <span className="font-mono text-[10px] text-muted-foreground/70">Not scanned</span>
+            <span className="font-mono text-xs text-muted-foreground">Not scanned</span>
           </div>
         </div>
       </div>

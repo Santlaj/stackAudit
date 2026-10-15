@@ -2,11 +2,10 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { Menu, Search, Bell, ChevronRight } from "lucide-react"
+import { Menu, Bell, ChevronRight } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useSession, signIn, signOut } from "@/lib/auth-client"
 import { useRouter, usePathname } from "next/navigation"
-import { GooeyInput } from "@/components/ui/gooey-input"
 
 export interface TopbarProps extends React.HTMLAttributes<HTMLDivElement> {
   onMenuClick?: () => void
@@ -46,23 +45,6 @@ export function Topbar({ className, onMenuClick, children, ...props }: TopbarPro
       </div>
 
       <div className="flex items-center gap-3 md:gap-4 flex-1 justify-end">
-        {/* Search / Command Placeholder */}
-        <div className="hidden md:flex relative w-full items-center justify-end pr-2">
-          <GooeyInput 
-            placeholder="Search repositories or commands..."
-            collapsedWidth={120}
-            expandedWidth={300}
-            classNames={{
-              root: "scale-[0.8] origin-right" // slightly scale down to fit the 14 h-14 topbar better
-            }}
-          />
-        </div>
-        
-        {/* Mobile Search Icon */}
-        <button className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-secondary/50 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-          <Search className="h-5 w-5 text-muted-foreground" />
-        </button>
-
         {/* Notifications */}
         <button className="relative inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-secondary/50 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
           <Bell className="h-4.5 w-4.5 text-muted-foreground" />

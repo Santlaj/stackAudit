@@ -64,7 +64,10 @@ import activityRouter from "./modules/activity/activity.routes.js";
 app.use("/api/health", healthRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
+app.use("/api/user", userRouter); // alias for singular /api/user/*
 app.get("/api/profile/badges", requireAuth, getUserBadges);
+app.get("/api/badges", requireAuth, getUserBadges);
+app.get("/api/user/badges", requireAuth, getUserBadges);
 app.use("/api/activity", activityRouter);
 app.use("/api/github", githubRoutes);
 app.use("/api/discovery", discoveryRoutes);

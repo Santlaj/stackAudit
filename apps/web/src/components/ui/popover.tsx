@@ -122,15 +122,23 @@ export function Popover({
       }
     };
 
+    const initialScrollY = window.scrollY;
+    const handleScroll = () => {
+      // Auto-close when scrolled far away so it doesn't linger off-screen
+      if (Math.abs(window.scrollY - initialScrollY) > 250) {
+        setIsOpen(false);
+      }
+    };
+
     document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("mousedown", handleClickOutside);
-    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("resize", updatePosition);
 
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("mousedown", handleClickOutside);
-      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", updatePosition);
     };
   }, [isOpen, updatePosition]);

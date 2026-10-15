@@ -111,7 +111,7 @@ export function RelevantFiles({
             <div
               key={rf.file}
               className={cn(
-                "rounded-md border border-border/70 transition-colors overflow-hidden",
+                "rounded-md border border-border transition-colors overflow-hidden",
                 isPrimary ? "bg-secondary/30" : "bg-card hover:bg-secondary/20"
               )}
             >
@@ -137,16 +137,17 @@ export function RelevantFiles({
                   <span className="truncate text-foreground font-medium">{rf.file}</span>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <Badge
-                    variant={isPrimary ? "default" : "secondary"}
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <span
                     className={cn(
-                      "text-[10px] uppercase font-mono px-2 py-0",
-                      isPrimary && "bg-emerald-700 dark:bg-emerald-600 text-white"
+                      "text-[10px] uppercase font-mono font-medium px-2 py-0.5 rounded tracking-wider",
+                      isPrimary 
+                        ? "text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20" 
+                        : "text-muted-foreground bg-secondary border border-border"
                     )}
                   >
                     {rf.role || "supporting"}
-                  </Badge>
+                  </span>
                   <div className="text-muted-foreground">
                     {isRowExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                   </div>
@@ -157,14 +158,14 @@ export function RelevantFiles({
               {isRowExpanded && (
                 <div className="px-3.5 pb-3 pt-1 border-t border-border/50 text-xs font-sans space-y-2 bg-secondary/10">
                   <div className="flex items-center justify-between pt-1">
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       Source: {rf.source === "graphify" ? "Structural analysis graph" : "Codebase analysis"}
                     </span>
                     <a
                       href={githubFileUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground font-medium hover:underline"
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-medium hover:underline"
                     >
                       <span>Open on GitHub</span>
                       <ExternalLink className="h-3 w-3" />
@@ -172,7 +173,7 @@ export function RelevantFiles({
                   </div>
 
                   {isPrimary && whyFilesMatter && (
-                    <div className="p-2 rounded bg-card border border-border/60 text-foreground/90 text-xs leading-relaxed">
+                    <div className="p-2 rounded bg-card border border-border text-foreground text-xs leading-relaxed">
                       <span className="font-semibold text-foreground block mb-0.5">Why it matters:</span>
                       {whyFilesMatter}
                     </div>

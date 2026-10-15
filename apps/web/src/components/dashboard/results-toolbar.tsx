@@ -2,10 +2,9 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { motion } from "motion/react";
 import { 
-  Search, 
-  X, 
+  Search,
+  X,
   SlidersHorizontal, 
   ArrowUpDown, 
   Bookmark, 
@@ -37,6 +36,53 @@ export interface ResultsToolbarProps {
   className?: string;
 }
 
+const SEARCH_PLACEHOLDERS = [
+  "Search repositories, issues or topics...",
+  "Search by tech (e.g. Python, React, Go)...",
+  "Search beginner-friendly issues...",
+  "Search by repository name...",
+];
+
+function useTypewriterPlaceholder(phrases: string[], isFocused: boolean, hasValue: boolean) {
+  const [displayedText, setDisplayedText] = React.useState(phrases[0] || "");
+  const [phraseIdx, setPhraseIdx] = React.useState(0);
+  const [charIdx, setCharIdx] = React.useState(phrases[0]?.length || 0);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (hasValue || isFocused) {
+      return;
+    }
+
+    const currentPhrase = phrases[phraseIdx % phrases.length] || "";
+    let timeout: ReturnType<typeof setTimeout>;
+
+    if (!isDeleting && charIdx < currentPhrase.length) {
+      timeout = setTimeout(() => {
+        setCharIdx((prev) => prev + 1);
+        setDisplayedText(currentPhrase.slice(0, charIdx + 1));
+      }, 55);
+    } else if (!isDeleting && charIdx >= currentPhrase.length) {
+      timeout = setTimeout(() => {
+        setIsDeleting(true);
+      }, 2200);
+    } else if (isDeleting && charIdx > 0) {
+      timeout = setTimeout(() => {
+        setCharIdx((prev) => prev - 1);
+        setDisplayedText(currentPhrase.slice(0, charIdx - 1));
+      }, 28);
+    } else if (isDeleting && charIdx === 0) {
+      setIsDeleting(false);
+      setPhraseIdx((prev) => (prev + 1) % phrases.length);
+      timeout = setTimeout(() => {}, 350);
+    }
+
+    return () => clearTimeout(timeout);
+  }, [charIdx, isDeleting, phraseIdx, phrases, isFocused, hasValue]);
+
+  return displayedText;
+}
+
 export function ResultsToolbar({
   viewMode,
   onViewModeChange,
@@ -57,9 +103,28 @@ export function ResultsToolbar({
 }: ResultsToolbarProps) {
   const [filterOpen, setFilterOpen] = React.useState(false);
   const [sortOpen, setSortOpen] = React.useState(false);
+  const [isFocused, setIsFocused] = React.useState(false);
 
   const filterRef = React.useRef<HTMLDivElement>(null);
   const sortRef = React.useRef<HTMLDivElement>(null);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  const animatedPlaceholder = useTypewriterPlaceholder(
+    SEARCH_PLACEHOLDERS,
+    isFocused,
+    Boolean(searchQuery)
+  );
+
+  React.useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   React.useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -88,27 +153,25 @@ export function ResultsToolbar({
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
         
         {/* VIEW TABS: Repositories vs Issues */}
-        <div className="inline-flex items-center p-0.5 rounded-sm bg-muted/60 border border-border/80 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={() => onViewModeChange("repositories")}
             className={cn(
-              "relative inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-xs transition-colors",
+              "h-8 px-3.5 inline-flex items-center gap-1.5 text-xs font-medium rounded-full transition-colors border",
               viewMode === "repositories"
-                ? "text-foreground font-semibold"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-foreground text-background font-semibold border-foreground"
+                : "bg-card text-muted-foreground border-border hover:text-foreground hover:bg-muted shadow-2xs"
             )}
           >
-            {viewMode === "repositories" && (
-              <motion.span
-                layoutId="activeViewTab"
-                className="absolute inset-0 rounded-xs bg-background shadow-xs border border-border/50"
-                transition={{ type: "spring", stiffness: 450, damping: 35 }}
-              />
-            )}
-            <Layers className="w-3.5 h-3.5 shrink-0 z-10" />
-            <span className="z-10">Repositories</span>
-            <span className="z-10 ml-0.5 text-[10px] font-mono px-1 py-0.2 rounded-xs bg-muted text-muted-foreground">
+            <Layers className="w-3.5 h-3.5 shrink-0" />
+            <span>Repositories</span>
+            <span className={cn(
+              "text-[10px] font-mono px-1.5 py-0.5 rounded-full",
+              viewMode === "repositories"
+                ? "bg-background/20 text-background font-bold"
+                : "bg-muted text-muted-foreground border border-border/50"
+            )}>
               {repoCount}
             </span>
           </button>
@@ -117,71 +180,86 @@ export function ResultsToolbar({
             type="button"
             onClick={() => onViewModeChange("issues")}
             className={cn(
-              "relative inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-xs transition-colors",
+              "h-8 px-3.5 inline-flex items-center gap-1.5 text-xs font-medium rounded-full transition-colors border",
               viewMode === "issues"
-                ? "text-foreground font-semibold"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-foreground text-background font-semibold border-foreground"
+                : "bg-card text-muted-foreground border-border hover:text-foreground hover:bg-muted shadow-2xs"
             )}
           >
-            {viewMode === "issues" && (
-              <motion.span
-                layoutId="activeViewTab"
-                className="absolute inset-0 rounded-xs bg-background shadow-xs border border-border/50"
-                transition={{ type: "spring", stiffness: 450, damping: 35 }}
-              />
-            )}
-            <ListOrdered className="w-3.5 h-3.5 shrink-0 z-10" />
-            <span className="z-10">Issues</span>
-            <span className="z-10 ml-0.5 text-[10px] font-mono px-1 py-0.2 rounded-xs bg-muted text-muted-foreground">
+            <ListOrdered className="w-3.5 h-3.5 shrink-0" />
+            <span>Issues</span>
+            <span className={cn(
+              "text-[10px] font-mono px-1.5 py-0.5 rounded-full",
+              viewMode === "issues"
+                ? "bg-background/20 text-background font-bold"
+                : "bg-muted text-muted-foreground border border-border/50"
+            )}>
               {issueCount}
             </span>
           </button>
         </div>
 
-        {/* SEARCH & ACTIONS */}
-        <div className="flex items-center gap-2 flex-1 max-w-xl">
-          {/* Search Input */}
-          <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        {/* CENTER: Header-Style Pill Search Bar */}
+        <div className="flex-1 flex justify-center px-2">
+          <div className="relative flex items-center w-full max-w-xs sm:max-w-sm">
+            <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 pointer-events-none z-10" />
             <input
+              ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchQueryChange(e.target.value)}
-              placeholder="Search repositories, issues or topics..."
-              className="w-full h-8 pl-8 pr-7 text-xs rounded-sm border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition-all"
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              placeholder={animatedPlaceholder}
+              className="w-full h-8 pl-8.5 pr-8 text-xs rounded-full bg-card border border-border hover:border-foreground/40 focus:border-foreground text-foreground placeholder:text-muted-foreground outline-none transition-all shadow-2xs"
             />
-            {searchQuery && (
+            {searchQuery ? (
               <button
                 type="button"
-                onClick={() => onSearchQueryChange("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  onSearchQueryChange("");
+                  searchInputRef.current?.focus();
+                }}
+                className="absolute right-2.5 text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-muted transition-colors"
+                title="Clear search"
               >
                 <X className="w-3 h-3" />
               </button>
-            )}
+            ) : null}
           </div>
+        </div>
+
+        {/* RIGHT: ACTIONS (Filters, Sort, Saved) */}
+        <div className="flex items-center gap-2 shrink-0">
 
           {/* FILTERS BUTTON & POPOVER */}
-          <div className="relative" ref={filterRef}>
+          <div className="relative group shrink-0" ref={filterRef}>
             <button
               type="button"
               onClick={() => setFilterOpen(prev => !prev)}
+              aria-label="Filter options"
               className={cn(
-                "h-8 px-2.5 inline-flex items-center gap-1.5 text-xs font-medium rounded-sm border transition-colors",
-                hasActiveFilters
-                  ? "bg-muted text-foreground border-foreground/30 font-semibold"
-                  : "bg-card text-muted-foreground border-border hover:text-foreground hover:bg-muted/50"
+                "h-8 w-8 inline-flex items-center justify-center rounded-full transition-colors relative shrink-0 border",
+                hasActiveFilters || filterOpen
+                  ? "bg-foreground text-background font-semibold border-foreground"
+                  : "bg-card text-muted-foreground border-border hover:text-foreground hover:bg-muted shadow-2xs"
               )}
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Filters</span>
               {hasActiveFilters && (
-                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
               )}
             </button>
 
+            {/* Hover Tooltip */}
+            {!filterOpen && (
+              <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center px-2 py-0.5 text-[11px] font-medium text-foreground bg-popover border border-border shadow-xs rounded-xs whitespace-nowrap z-50">
+                {hasActiveFilters ? "Filters (Active)" : "Filters"}
+              </div>
+            )}
+
             {filterOpen && (
-              <div className="absolute right-0 mt-1 w-64 rounded-sm border border-border bg-popover shadow-md p-3 z-50 animate-in fade-in zoom-in-95 duration-100 space-y-3">
+              <div className="absolute right-0 mt-2 w-64 rounded-sm border border-border bg-popover shadow-md p-3 z-50 animate-in fade-in zoom-in-95 duration-100 space-y-3">
                 <div>
                   <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1.5">
                     Difficulty Level
@@ -199,7 +277,7 @@ export function ResultsToolbar({
                             : "bg-muted/30 border-border/60 text-muted-foreground hover:text-foreground"
                         )}
                       >
-                        {level}
+                        {level === "beginner" ? "Good first" : level}
                       </button>
                     ))}
                   </div>
@@ -237,18 +315,30 @@ export function ResultsToolbar({
           </div>
 
           {/* SORT BUTTON & POPOVER */}
-          <div className="relative" ref={sortRef}>
+          <div className="relative group shrink-0" ref={sortRef}>
             <button
               type="button"
               onClick={() => setSortOpen(prev => !prev)}
-              className="h-8 px-2.5 inline-flex items-center gap-1.5 text-xs font-medium rounded-sm border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              aria-label="Sort options"
+              className={cn(
+                "h-8 w-8 inline-flex items-center justify-center rounded-full transition-colors shrink-0 border",
+                sortOpen
+                  ? "bg-foreground text-background font-semibold border-foreground"
+                  : "bg-card text-muted-foreground border-border hover:text-foreground hover:bg-muted shadow-2xs"
+              )}
             >
               <ArrowUpDown className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">{sortLabels[sortBy]}</span>
             </button>
 
+            {/* Hover Tooltip */}
+            {!sortOpen && (
+              <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center px-2 py-0.5 text-[11px] font-medium text-foreground bg-popover border border-border shadow-xs rounded-xs whitespace-nowrap z-50">
+                Sort: {sortLabels[sortBy]}
+              </div>
+            )}
+
             {sortOpen && (
-              <div className="absolute right-0 mt-1 w-44 rounded-sm border border-border bg-popover shadow-md py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 mt-2 w-44 rounded-sm border border-border bg-popover shadow-md py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
                 {(["match", "stars", "issues", "activity"] as SortOption[]).map((option) => (
                   <button
                     key={option}
@@ -273,28 +363,36 @@ export function ResultsToolbar({
           </div>
 
           {/* SAVED ONLY TOGGLE */}
-          <button
-            type="button"
-            onClick={onToggleSavedOnly}
-            className={cn(
-              "h-8 px-2.5 inline-flex items-center gap-1.5 text-xs font-medium rounded-sm border transition-colors shrink-0",
-              savedOnly
-                ? "bg-primary text-primary-foreground border-primary font-semibold"
-                : "bg-card text-muted-foreground border-border hover:text-foreground hover:bg-muted/50"
-            )}
-            title="Show saved issues only"
-          >
-            <Bookmark className={cn("w-3.5 h-3.5", savedOnly && "fill-current")} />
-            <span className="hidden lg:inline">Saved</span>
-            {savedCount > 0 && (
-              <span className={cn(
-                "font-mono text-[10px] px-1 rounded-xs",
-                savedOnly ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
-              )}>
-                {savedCount}
-              </span>
-            )}
-          </button>
+          <div className="relative group shrink-0">
+            <button
+              type="button"
+              onClick={onToggleSavedOnly}
+              aria-label="Show saved only"
+              className={cn(
+                "h-8 w-8 inline-flex items-center justify-center rounded-full transition-colors relative shrink-0 border",
+                savedOnly
+                  ? "bg-foreground text-background font-semibold border-foreground"
+                  : "bg-card text-muted-foreground border-border hover:text-foreground hover:bg-muted shadow-2xs"
+              )}
+            >
+              <Bookmark className={cn("w-3.5 h-3.5", savedOnly && "fill-current")} />
+              {savedCount > 0 && (
+                <span className={cn(
+                  "absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 flex items-center justify-center font-mono text-[9px] rounded-full",
+                  savedOnly
+                    ? "bg-foreground text-background font-bold"
+                    : "bg-primary text-primary-foreground font-semibold"
+                )}>
+                  {savedCount}
+                </span>
+              )}
+            </button>
+
+            {/* Hover Tooltip */}
+            <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center px-2 py-0.5 text-[11px] font-medium text-foreground bg-popover border border-border shadow-xs rounded-xs whitespace-nowrap z-50">
+              {savedOnly ? "Show all" : (savedCount > 0 ? `Saved (${savedCount})` : "Saved")}
+            </div>
+          </div>
         </div>
       </div>
     </div>

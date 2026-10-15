@@ -18,6 +18,7 @@ router.get("/matches/:userId", discoveryController.getMatches);
 router.get("/match/:matchId", discoveryController.getMatch);
 router.post("/evaluate/:matchId", discoveryController.evaluateMatch);
 router.get("/saved", discoveryController.getSavedMatches);
+router.get("/history", discoveryController.getContributionHistory);
 router.patch("/save/:matchId", discoveryController.toggleSaveMatch);
 router.patch("/matches/:matchId/status", discoveryController.updateMatchStatus);
 

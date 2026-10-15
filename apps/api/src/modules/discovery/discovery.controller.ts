@@ -79,6 +79,19 @@ export class DiscoveryController {
     }
   }
 
+  async getContributionHistory(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req.query.userId as string) || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ success: false, error: { code: "UNAUTHORIZED", message: "Authentication required" } });
+      }
+      const history = await discoveryService.getContributionHistory(userId);
+      successResponse(res, history.map(formatMatchDto), "Contribution history retrieved", 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async updateMatchStatus(req: Request, res: Response, next: NextFunction) {
     try {
       const { matchId } = req.params as { matchId: string };

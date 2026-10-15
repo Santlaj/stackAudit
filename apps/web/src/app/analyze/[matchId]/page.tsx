@@ -170,10 +170,7 @@ export default function AnalyzePage({ params }: { params: Promise<{ matchId: str
   const handleStartContribution = async () => {
     if (match?.status === "STARTED") {
       if (match.issueUrl) {
-        const opened = window.open(match.issueUrl, "_blank", "noopener,noreferrer");
-        if (!opened) {
-          window.location.href = match.issueUrl;
-        }
+        window.open(match.issueUrl, "_blank", "noopener,noreferrer");
       }
       return;
     }
@@ -184,12 +181,9 @@ export default function AnalyzePage({ params }: { params: Promise<{ matchId: str
       const updated = await updateMatchStatus(matchId, "STARTED");
       setMatch(prev => prev ? { ...prev, status: updated.status } : updated);
 
-      // Redirect to GitHub issue
+      // Open GitHub issue in a new tab without redirecting the current workspace tab
       if (match?.issueUrl) {
-        const opened = window.open(match.issueUrl, "_blank", "noopener,noreferrer");
-        if (!opened) {
-          window.location.href = match.issueUrl;
-        }
+        window.open(match.issueUrl, "_blank", "noopener,noreferrer");
       }
     } catch (err: any) {
       setActionError(err.message || "Unable to start contribution. Please try again.");

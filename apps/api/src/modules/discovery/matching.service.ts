@@ -37,6 +37,21 @@ const FRAMEWORK_KEYWORDS: Record<string, string[]> = {
   "laravel": ["laravel"],
 };
 
+export function normalizeDifficulty(diff?: string | null): string | null {
+  if (!diff) return null;
+  const d = diff.toLowerCase().trim();
+  if (d.includes("beginner") || d.includes("good") || d.includes("easy") || d.includes("starter")) {
+    return "beginner";
+  }
+  if (d.includes("intermed") || d.includes("medium")) {
+    return "intermediate";
+  }
+  if (d.includes("advanc") || d.includes("hard") || d.includes("complex")) {
+    return "advanced";
+  }
+  return null;
+}
+
 export class MatchingService {
   /**
    * Find candidate issues for a developer from the local database.
@@ -55,12 +70,11 @@ export class MatchingService {
     };
 
     // ─── Difficulty filter ───
-    const targetDifficulty = difficulty 
-      || (profile as any).preferredComplexity 
-      || "";
-    
-    if (targetDifficulty) {
-      whereClause.difficultyEstimate = targetDifficulty.toLowerCase();
+    // Only use strict SQL WHERE filtering if difficulty is explicitly selected (e.g. from toolbar dropdown)
+    // If difficulty is only a profile preference, do NOT filter in SQL — let scoreMatch rank matching complexity top
+    const explicitDifficulty = normalizeDifficulty(difficulty);
+    if (explicitDifficulty) {
+      whereClause.difficultyEstimate = explicitDifficulty;
     }
 
     // ─── Language filter ───
@@ -103,7 +117,7 @@ export class MatchingService {
         SELECT * FROM "github_issues"
         WHERE "state" = 'open'
           AND ("staleness" IS NULL OR "staleness" != 'abandoned')
-          ${targetDifficulty ? `AND "difficultyEstimate" = $2` : ''}
+          ${explicitDifficulty ? `AND "difficultyEstimate" = $2` : ''}
           AND (
             -- Check repoLanguages JSON keys (case-insensitive via lower())
             EXISTS (
@@ -114,9 +128,9 @@ export class MatchingService {
           )
         ORDER BY "repoStars" DESC, "ingestedAt" DESC
         LIMIT 250
-      `, langParams, ...(targetDifficulty ? [targetDifficulty.toLowerCase()] : []));
+      `, langParams, ...(explicitDifficulty ? [explicitDifficulty] : []));
     } else {
-      // No language filter — return everything matching difficulty
+      // No language filter — return open issues (filtered by difficulty only if explicitly selected)
       candidates = await prisma.github_issue.findMany({
         where: whereClause,
         take: 250,
@@ -147,25 +161,29 @@ export class MatchingService {
     const reasons: string[] = [];
     const gaps: string[] = [];
     
-    // Resolve target languages (explicit selections > profile)
+    // Resolve target developer languages (skills against which the issue is matched)
     const targetLanguages = new Set<string>();
 
-    if (languages && languages.length > 0) {
-      for (const l of languages) targetLanguages.add(l.toLowerCase());
+    const observedLangs: string[] = (profile as any)?.observedLanguages || [];
+    const recentLangs: string[] = (profile as any)?.recentLanguages || [];
+    const focusLangs: string[] = (profile as any)?.currentFocus || [];
+
+    // The developer's skills:
+    // 1. If user explicitly configured observedLanguages in their profile, that is their definitive active stack.
+    //    Stale GitHub recentLanguages or temporary filter selections must NOT re-add removed languages!
+    // 2. If observedLanguages is empty, fall back to recentLanguages (from GitHub ingestion).
+    // 3. If profile has no recorded languages at all, fall back to explicit filter languages if provided.
+    let developerLangs: string[] = [];
+    if (observedLangs.length > 0) {
+      developerLangs = [...observedLangs, ...focusLangs];
+    } else if (recentLangs.length > 0) {
+      developerLangs = [...recentLangs, ...focusLangs];
+    } else if (languages && languages.length > 0) {
+      developerLangs = [...languages];
     }
-    if (frameworks && frameworks.length > 0) {
-      for (const fw of frameworks) {
-        const parents = FRAMEWORK_LANGUAGE_MAP[fw.toLowerCase()];
-        if (parents) for (const p of parents) targetLanguages.add(p.toLowerCase());
-      }
-    }
-    if (targetLanguages.size === 0) {
-      const profileLangs = [
-        ...((profile as any).recentLanguages || []),
-        ...((profile as any).observedLanguages || []),
-        ...((profile as any).currentFocus || []),
-      ];
-      for (const l of profileLangs) targetLanguages.add(l.toLowerCase());
+
+    for (const l of developerLangs) {
+      if (l) targetLanguages.add(l.toLowerCase());
     }
 
     const targetDifficulty = difficulty 
@@ -216,11 +234,18 @@ export class MatchingService {
     }
 
     // ─── 1b. Framework Bonus (up to +10) ───
-    if (frameworks && frameworks.length > 0) {
+    const targetFrameworks = (frameworks && frameworks.length > 0)
+      ? frameworks
+      : [
+          ...((profile as any).observedLanguages || []),
+          ...((profile as any).currentFocus || []),
+        ].filter(t => FRAMEWORK_KEYWORDS[t.toLowerCase()]);
+
+    if (targetFrameworks.length > 0) {
       const repoTopics: string[] = ((issue as any).repoTopics || []).map((t: string) => t.toLowerCase());
       const repoDesc: string = ((issue as any).repoDescription || "").toLowerCase();
 
-      for (const fw of frameworks) {
+      for (const fw of targetFrameworks) {
         const keywords = FRAMEWORK_KEYWORDS[fw.toLowerCase()] || [];
         const topicMatch = keywords.some(kw => repoTopics.includes(kw));
         const descMatch = keywords.some(kw => repoDesc.includes(kw));
@@ -234,14 +259,15 @@ export class MatchingService {
     }
 
     // ─── 2. Difficulty Match (Weight: 20%) ───
-    const diff = issue.difficultyEstimate;
+    const diff = normalizeDifficulty(issue.difficultyEstimate);
+    const targetDiff = normalizeDifficulty(targetDifficulty);
     
-    if (diff && targetDifficulty) {
-      if (diff.toLowerCase() === targetDifficulty) {
+    if (diff && targetDiff) {
+      if (diff === targetDiff) {
         score += 20;
         reasons.push(`This is a ${diff}-friendly issue, matching your preference.`);
       } else {
-        gaps.push(`Issue difficulty (${diff}) does not perfectly align with your preference (${targetDifficulty}).`);
+        gaps.push(`Issue difficulty (${diff}) does not perfectly align with your preference (${targetDiff}).`);
       }
     } else if (!diff) {
       gaps.push(`The issue difficulty is not explicitly known.`);

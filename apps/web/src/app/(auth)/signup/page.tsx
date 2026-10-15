@@ -21,14 +21,14 @@ export default function SignupPage() {
     setError(null);
     if (provider === "github") {
       setLoadingGithub(true);
-      window.location.href = `${API_BASE}/api/auth/login/github?callbackURL=${encodeURIComponent(window.location.origin + "/")}`;
+      window.location.href = `${API_BASE}/api/auth/login/github?callbackURL=${encodeURIComponent(window.location.origin + "/discover")}`;
       return;
     }
 
     try {
       const { data, error: authError } = await signIn.social({
         provider,
-        callbackURL: `${window.location.origin}/`,
+        callbackURL: `${window.location.origin}/discover`,
       });
       if (authError) throw new Error(authError.message || "Failed to sign up");
     } catch (err: any) {
@@ -51,15 +51,15 @@ export default function SignupPage() {
         name,
         email,
         password,
-        callbackURL: `${window.location.origin}/`,
+        callbackURL: `${window.location.origin}/discover`,
       });
       
       if (authError) {
         throw new Error(authError.message || "Failed to create account.");
       }
       
-      // On success, redirect to home/dashboard
-      router.push("/");
+      // On success, redirect to discover (which handles onboarding if unconfigured)
+      router.push("/discover");
     } catch (err: any) {
       setError(err.message || "Failed to create account.");
       setLoadingEmail(false);

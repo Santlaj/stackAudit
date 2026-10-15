@@ -213,31 +213,31 @@ export function PipelineProgress({ status, error, repositoryFullName = "Reposito
                     isDone 
                       ? "bg-emerald-500 border-emerald-500 text-white" 
                       : isActive 
-                        ? "bg-white dark:bg-card border-emerald-500 text-emerald-500 dark:text-emerald-400 shadow-[0_0_0_4px_rgba(16,185,129,0.15)]"
-                        : "bg-white dark:bg-card border-gray-200 dark:border-border text-gray-300 dark:text-muted-foreground/50"
+                        ? "bg-card border-emerald-500 text-emerald-500 dark:text-emerald-400 shadow-[0_0_0_4px_rgba(16,185,129,0.15)]"
+                        : "bg-card border-border text-muted-foreground"
                   }`}>
-                    {isDone ? <Check className="w-4 h-4 font-bold" /> : <span className="text-[13px] font-bold">{idx + 1}</span>}
+                    {isDone ? <Check className="w-4 h-4 font-bold" /> : <span className="text-xs font-bold">{idx + 1}</span>}
                   </div>
 
                   {/* Step Content */}
                   <div className="flex-1 pt-1.5">
-                    <h4 className={`text-[15px] font-semibold mb-1.5 transition-colors ${
-                      isActive || isDone ? "text-gray-900 dark:text-foreground" : "text-gray-400 dark:text-muted-foreground/60"
+                    <h4 className={`text-sm font-semibold mb-1 transition-colors ${
+                      isActive || isDone ? "text-foreground" : "text-muted-foreground"
                     }`}>
                       {step.label}
                     </h4>
-                    <p className={`text-[13px] leading-relaxed mb-3 ${isActive ? "text-gray-600 dark:text-muted-foreground" : "text-gray-400 dark:text-muted-foreground/60"}`}>
+                    <p className={`text-xs leading-relaxed mb-3 ${isActive ? "text-muted-foreground" : "text-muted-foreground"}`}>
                       {step.description}
                     </p>
                     
                     {/* Badge */}
                     <div className="flex items-center">
-                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${
+                      <span className={`text-xs font-medium uppercase tracking-wider px-2 py-0.5 rounded-full ${
                         isDone 
                           ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/40"
                           : isActive
                             ? "bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-500 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/40"
-                            : "bg-gray-50 dark:bg-secondary/50 text-gray-400 dark:text-muted-foreground/60 border border-gray-100 dark:border-border"
+                            : "bg-secondary text-muted-foreground border border-border"
                       }`}>
                         {isDone ? "Completed" : isActive ? "In progress" : "Pending"}
                       </span>
@@ -356,10 +356,10 @@ export function PipelineProgress({ status, error, repositoryFullName = "Reposito
                   <Icon className="w-4 h-4" />
                 </div>
                 
-                <h4 className={`text-[13px] font-bold mb-2 ${state === 'pending' ? 'text-gray-400 dark:text-muted-foreground/60' : 'text-gray-900 dark:text-foreground'}`}>
+                <h4 className={`text-xs font-bold mb-2 ${state === 'pending' ? 'text-muted-foreground' : 'text-foreground'}`}>
                   {card.title}
                 </h4>
-                <p className={`text-[12px] leading-relaxed mb-6 ${state === 'pending' ? 'text-gray-400 dark:text-muted-foreground/50' : 'text-gray-500 dark:text-muted-foreground'}`}>
+                <p className={`text-xs leading-relaxed mb-6 text-muted-foreground`}>
                   {card.desc}
                 </p>
                 
@@ -378,15 +378,15 @@ export function PipelineProgress({ status, error, repositoryFullName = "Reposito
                       <div className={`w-1.5 h-1.5 rounded-full ${card.dotColor} dot-bounce`} />
                       <div className={`w-1.5 h-1.5 rounded-full ${card.dotColor} dot-bounce`} />
                       <div className={`w-1.5 h-1.5 rounded-full ${card.dotColor} dot-bounce`} />
-                      <div className="w-1.5 h-1.5 rounded-full bg-gray-200 dark:bg-secondary" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-secondary" />
                     </>
                   )}
                   {state === 'pending' && (
                     <>
-                      <div className="w-1.5 h-1.5 rounded-full bg-gray-200 dark:bg-secondary" />
-                      <div className="w-1.5 h-1.5 rounded-full bg-gray-200 dark:bg-secondary" />
-                      <div className="w-1.5 h-1.5 rounded-full bg-gray-200 dark:bg-secondary" />
-                      <div className="w-1.5 h-1.5 rounded-full bg-gray-200 dark:bg-secondary" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-secondary" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-secondary" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-secondary" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-secondary" />
                     </>
                   )}
                 </div>
@@ -396,13 +396,13 @@ export function PipelineProgress({ status, error, repositoryFullName = "Reposito
         </div>
 
         {/* Very Bottom: "Almost there!" Banner */}
-        <div className="mt-auto bg-[#F0FDF4] dark:bg-emerald-950/20 rounded-2xl p-5 md:p-6 flex items-start gap-4 relative overflow-hidden border border-[#DCFCE7] dark:border-emerald-900/40">
+        <div className="mt-auto bg-emerald-50/50 dark:bg-emerald-950/20 rounded-2xl p-5 md:p-6 flex items-start gap-4 relative overflow-hidden border border-emerald-200/50 dark:border-emerald-900/40">
           <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 relative z-10">
             <Zap className="w-4 h-4 fill-emerald-600 dark:fill-emerald-400" />
           </div>
           <div className="relative z-10">
-            <h4 className="text-sm font-bold text-emerald-900 dark:text-emerald-300 mb-1">Almost there!</h4>
-            <p className="text-[13px] text-emerald-800/80 dark:text-emerald-300/80 max-w-xl">
+            <h4 className="text-sm font-bold text-foreground mb-1">Almost there!</h4>
+            <p className="text-xs text-muted-foreground max-w-xl">
               This usually takes 30-60 seconds. We're analyzing the repository to give you the best guidance possible.
             </p>
           </div>
