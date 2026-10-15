@@ -115,10 +115,11 @@ export class MatchingService {
       }
     }
 
+    const langArray: string[] = Array.from(effectiveLanguages);
     // Ignore auxiliary markup/styling languages when filtering candidate repositories
     const AUXILIARY_LANGS = new Set(["html", "css", "markdown", "shell", "dockerfile", "makefile"]);
-    const coreLangs = langArray.filter(l => !AUXILIARY_LANGS.has(l.toLowerCase()));
-    const effectiveLangParams = (coreLangs.length > 0 ? coreLangs : langArray).map(l => l.toLowerCase());
+    const coreLangs = langArray.filter((l: string) => !AUXILIARY_LANGS.has(l.toLowerCase()));
+    const effectiveLangParams = (coreLangs.length > 0 ? coreLangs : langArray).map((l: string) => l.toLowerCase());
 
     let candidates: any[];
 
