@@ -138,6 +138,10 @@ export function DiscoveryDashboard() {
 
       const userObserved = (cached.profile?.observedLanguages || []).map(l => l.toLowerCase());
       const hasStaleCache = userObserved.length > 0 && cached.matches.slice(0, 15).some(m => {
+        const techs = m.technologies || [];
+        if (techs.length > 0) {
+          return !techs.some(t => userObserved.includes(t.toLowerCase()));
+        }
         const reasons = m.reasons || [];
         return reasons.some(r => {
           const match = r.match(/Strong language match:\s*([^ (]+)/i);
@@ -344,6 +348,9 @@ export function DiscoveryDashboard() {
             t => t.toLowerCase() === selectedTechnology.toLowerCase()
           ) || (repo.language?.toLowerCase() === selectedTechnology.toLowerCase());
           if (!matchTech) return false;
+        } else if (profile?.observedLanguages && profile.observedLanguages.length > 0) {
+          // When "All" is active, suppress any non-matching low-score repos (<= 25)
+          if ((repo.topMatchScore ?? 0) <= 25) return false;
         }
 
         // Search query
@@ -403,6 +410,9 @@ export function DiscoveryDashboard() {
             t => t.toLowerCase() === selectedTechnology.toLowerCase()
           );
           if (!matchTech) return false;
+        } else if (profile?.observedLanguages && profile.observedLanguages.length > 0) {
+          // When "All" is active, suppress any non-matching low-score issues (<= 25)
+          if ((issue.matchScore ?? 0) <= 25) return false;
         }
 
         // Search query

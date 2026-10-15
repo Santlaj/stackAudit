@@ -98,9 +98,23 @@ export class MatchingService {
       }
     }
 
-    // Only restrict by language in SQL if the user explicitly provided language/framework filters
-    // When no filter is provided (e.g. "All"), return all open issues across all languages
-    // so every user can see and explore the full catalog of issues, with best matches ranked top.
+    // If no explicit filter was provided (default feed / "All"), prioritize the developer's profile tech stack!
+    if (effectiveLanguages.size === 0 && profile) {
+      const observed: string[] = (profile as any)?.observedLanguages || [];
+      const focus: string[] = (profile as any)?.currentFocus || [];
+      const recent: string[] = (profile as any)?.recentLanguages || [];
+
+      if (observed.length > 0) {
+        // User explicitly configured observedLanguages — candidates MUST come from their active stack
+        for (const l of observed) effectiveLanguages.add(l);
+        for (const l of focus) effectiveLanguages.add(l);
+      } else if (recent.length > 0) {
+        // Fallback for new accounts where observedLanguages isn't set yet
+        for (const l of recent) effectiveLanguages.add(l);
+        for (const l of focus) effectiveLanguages.add(l);
+      }
+    }
+
     const langArray = [...effectiveLanguages];
 
     // Use raw SQL for JSON overlap on repoLanguages, falling back to repoLanguage
@@ -324,6 +338,19 @@ export class MatchingService {
       }
     } else {
       gaps.push(`PR acceptance rate is unknown.`);
+    }
+
+    // Hard Language Compatibility Gate:
+    // If the developer has an active stack and the repository has ZERO language overlap,
+    // cap the score to 20% so non-matching technologies cannot score 60-70% as "Good Match"
+    if (targetLanguages.size > 0) {
+      const hasOverlap = repoLangKeys.length > 0
+        ? repoLangKeys.some(k => targetLanguages.has(k))
+        : (issue.repoLanguage && targetLanguages.has(issue.repoLanguage.toLowerCase()));
+
+      if (!hasOverlap) {
+        score = Math.min(score, 20);
+      }
     }
 
     // Normalize — with framework bonus, max can be 110, so cap at 100

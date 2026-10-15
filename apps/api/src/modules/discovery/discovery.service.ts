@@ -23,10 +23,15 @@ export class DiscoveryService {
       include: { githubIssue: true },
     });
 
-    // Check if existing matches contain stale language scores (e.g. scoring removed language like Python as strong match)
+    // Check if existing matches contain non-matching languages (e.g. Go, Ruby, C, Python when user only knows TypeScript)
     if (existing && existing.length > 0 && observedLangs.length > 0) {
       const allowedLangs = new Set(observedLangs.map(l => l.toLowerCase()));
-      const hasStaleLanguageMatch = existing.slice(0, 20).some(m => {
+      const hasUnmatchedTech = existing.slice(0, 20).some(m => {
+        const techs = (m.technologies as string[]) || [];
+        if (techs.length > 0) {
+          const hasOverlap = techs.some(t => allowedLangs.has(t.toLowerCase()));
+          return !hasOverlap;
+        }
         const reasons = (m.reasons as string[]) || [];
         return reasons.some(r => {
           const match = r.match(/Strong language match:\s*([^ (]+)/i);
@@ -37,8 +42,8 @@ export class DiscoveryService {
         });
       });
 
-      if (hasStaleLanguageMatch) {
-        logger.info("Stale language matches detected in DB, refreshing for user", { userId });
+      if (hasUnmatchedTech) {
+        logger.info("Unmatched language matches detected in DB, refreshing for user", { userId });
         const refreshed = await this.refreshMatchesForUser(userId);
         if (refreshed && refreshed.length > 0) {
           return refreshed;
@@ -154,8 +159,12 @@ export class DiscoveryService {
         });
       }
       
-      matchesFound.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
-      topMatches = matchesFound.slice(0, 150);
+      // Filter out language-mismatched or disqualified issues (score <= 25)
+      const qualifiedMatches = matchesFound.filter(m => (m.matchScore ?? 0) > 25);
+      const matchesToRank = qualifiedMatches.length > 0 ? qualifiedMatches : matchesFound;
+      
+      matchesToRank.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
+      topMatches = matchesToRank.slice(0, 150);
 
       // ─── Upsert matches (prevents duplicates) ───
       await Promise.all(
