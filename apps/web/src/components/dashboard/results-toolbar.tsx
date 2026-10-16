@@ -253,13 +253,13 @@ export function ResultsToolbar({
 
             {/* Hover Tooltip */}
             {!filterOpen && (
-              <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center px-2 py-0.5 text-[11px] font-medium text-foreground bg-popover border border-border shadow-xs rounded-xs whitespace-nowrap z-50">
+              <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center px-2 py-0.5 text-[11px] font-medium text-foreground bg-popover border border-border shadow-xs rounded-md whitespace-nowrap z-50">
                 {hasActiveFilters ? "Filters (Active)" : "Filters"}
               </div>
             )}
 
             {filterOpen && (
-              <div className="absolute right-0 mt-2 w-64 rounded-sm border border-border bg-popover shadow-md p-3 z-50 animate-in fade-in zoom-in-95 duration-100 space-y-3">
+              <div className="absolute right-0 mt-2 w-64 rounded-xl border border-border bg-popover shadow-md p-3 z-50 animate-in fade-in zoom-in-95 duration-100 space-y-3">
                 <div>
                   <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1.5">
                     Difficulty Level
@@ -271,7 +271,7 @@ export function ResultsToolbar({
                         type="button"
                         onClick={() => onDifficultyChange(level)}
                         className={cn(
-                          "px-2 py-1 text-xs capitalize rounded-xs text-left border transition-colors",
+                          "px-2.5 py-1.5 text-xs capitalize rounded-md text-left border transition-colors",
                           difficulty === level
                             ? "bg-foreground text-background border-foreground font-semibold"
                             : "bg-muted/30 border-border/60 text-muted-foreground hover:text-foreground"
@@ -332,13 +332,13 @@ export function ResultsToolbar({
 
             {/* Hover Tooltip */}
             {!sortOpen && (
-              <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center px-2 py-0.5 text-[11px] font-medium text-foreground bg-popover border border-border shadow-xs rounded-xs whitespace-nowrap z-50">
+              <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center px-2 py-0.5 text-[11px] font-medium text-foreground bg-popover border border-border shadow-xs rounded-md whitespace-nowrap z-50">
                 Sort: {sortLabels[sortBy]}
               </div>
             )}
 
             {sortOpen && (
-              <div className="absolute right-0 mt-2 w-44 rounded-sm border border-border bg-popover shadow-md py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 mt-2 w-44 rounded-xl border border-border bg-popover shadow-md py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
                 {(["match", "stars", "issues", "activity"] as SortOption[]).map((option) => (
                   <button
                     key={option}
@@ -389,7 +389,7 @@ export function ResultsToolbar({
             </button>
 
             {/* Hover Tooltip */}
-            <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center px-2 py-0.5 text-[11px] font-medium text-foreground bg-popover border border-border shadow-xs rounded-xs whitespace-nowrap z-50">
+            <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center px-2 py-0.5 text-[11px] font-medium text-foreground bg-popover border border-border shadow-xs rounded-md whitespace-nowrap z-50">
               {savedOnly ? "Show all" : (savedCount > 0 ? `Saved (${savedCount})` : "Saved")}
             </div>
           </div>

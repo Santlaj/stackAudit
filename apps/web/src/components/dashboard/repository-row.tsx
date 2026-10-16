@@ -82,7 +82,7 @@ export function RepositoryRow({
   }, [repo.technologies, repo.language]);
 
   return (
-    <div className="border border-border rounded-xs bg-card hover:border-foreground/30 transition-colors shadow-2xs">
+    <div className="border border-border rounded-xl bg-card hover:border-foreground/30 transition-colors shadow-2xs">
       {/* REPOSITORY HEADER ROW */}
       <div 
         onClick={onToggleExpand}
@@ -168,7 +168,7 @@ export function RepositoryRow({
               {displayTechnologies.map((tech) => (
                 <span
                   key={tech}
-                  className="text-[10px] text-muted-foreground px-1.5 py-0.2 rounded-xs bg-muted/60"
+                  className="text-[10px] text-muted-foreground px-2 py-0.5 rounded-md bg-muted/60"
                 >
                   {tech}
                 </span>
@@ -258,7 +258,7 @@ export function RepositoryRow({
                   return (
                     <div
                       key={issue.id}
-                      className="pt-2 first:pt-0 flex items-start sm:items-center justify-between gap-3 group/issue hover:bg-card/70 p-1.5 rounded-xs transition-colors"
+                      className="pt-2 first:pt-0 flex items-start sm:items-center justify-between gap-3 group/issue hover:bg-card/70 p-2 rounded-lg transition-colors"
                     >
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -330,7 +330,7 @@ export function RepositoryRow({
                         <button
                           type="button"
                           onClick={() => onExploreIssue(issue.id)}
-                          className="px-2 py-1 text-[11px] font-medium rounded-xs bg-foreground text-background hover:bg-foreground/90 transition-colors inline-flex items-center gap-1 shadow-2xs"
+                          className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-foreground text-background hover:bg-foreground/90 transition-colors inline-flex items-center gap-1 shadow-2xs"
                         >
                           <span>Explore</span>
                           <ArrowRight className="w-3 h-3" />

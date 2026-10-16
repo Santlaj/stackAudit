@@ -587,7 +587,7 @@ export function DiscoveryDashboard() {
           />
 
           {error && (
-            <div className="bg-destructive/10 text-destructive border border-destructive/20 rounded-xs p-3 flex items-start gap-2 text-xs">
+            <div className="bg-destructive/10 text-destructive border border-destructive/20 rounded-lg p-3 flex items-start gap-2 text-xs">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.2" />
               <p>{error}</p>
             </div>
@@ -595,7 +595,7 @@ export function DiscoveryDashboard() {
 
           {/* LOADING STATE */}
           {(loadingInitial || loadingDiscover) ? (
-            <div className="py-20 text-center space-y-3 border border-dashed border-border/70 rounded-xs bg-card/40">
+            <div className="py-20 text-center space-y-3 border border-dashed border-border/70 rounded-xl bg-card/40">
               <RotateCw className="w-5 h-5 animate-spin mx-auto text-muted-foreground" />
               <p className="text-xs font-medium text-foreground">
                 Analyzing matching opportunities...
@@ -607,7 +607,7 @@ export function DiscoveryDashboard() {
           ) : viewMode === "repositories" ? (
             /* REPOSITORIES FEED */
             filteredRepositories.length === 0 ? (
-              <div className="py-16 text-center space-y-2 border border-dashed border-border/70 rounded-xs bg-card/30 p-6">
+              <div className="py-16 text-center space-y-2 border border-dashed border-border/70 rounded-xl bg-card/30 p-6">
                 <SearchX className="w-6 h-6 mx-auto text-muted-foreground/60" />
                 <p className="text-xs font-semibold text-foreground">No repositories found</p>
                 <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
@@ -674,7 +674,7 @@ export function DiscoveryDashboard() {
           ) : (
             /* ISSUES FEED */
             filteredIssues.length === 0 ? (
-              <div className="py-16 text-center space-y-2 border border-dashed border-border/70 rounded-xs bg-card/30 p-6">
+              <div className="py-16 text-center space-y-2 border border-dashed border-border/70 rounded-xl bg-card/30 p-6">
                 <SearchX className="w-6 h-6 mx-auto text-muted-foreground/60" />
                 <p className="text-xs font-semibold text-foreground">No issues found</p>
                 <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">

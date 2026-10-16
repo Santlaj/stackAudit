@@ -159,7 +159,7 @@ export function DailyCalendar({
 
               {/* Accessible Tooltip */}
               {isHovered && (
-                <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-50 bg-popover text-foreground border border-border shadow-md rounded-xs px-2 py-1 text-[10px] whitespace-nowrap pointer-events-none animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-50 bg-popover text-foreground border border-border shadow-md rounded-md px-2.5 py-1 text-[10px] whitespace-nowrap pointer-events-none animate-in fade-in zoom-in-95 duration-100">
                   <div className="font-semibold">{item.dateStr}</div>
                   <div className="text-muted-foreground">
                     {item.isCompleted

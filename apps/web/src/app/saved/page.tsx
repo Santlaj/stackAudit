@@ -91,7 +91,7 @@ export default function SavedPage() {
     return (
       <div 
         key={match.id} 
-        className="border border-border/60 bg-card rounded-md p-4 flex flex-col sm:flex-row gap-4 sm:items-center justify-between hover:border-border transition-colors"
+        className="border border-border/60 bg-card rounded-xl p-4 flex flex-col sm:flex-row gap-4 sm:items-center justify-between hover:border-border transition-colors shadow-xs"
       >
         <div className="space-y-1.5 min-w-0 flex-1">
           {/* Metadata Row: Repo, Status Badge, Match Score */}

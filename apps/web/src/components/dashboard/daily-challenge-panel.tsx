@@ -136,13 +136,13 @@ export function DailyChallengePanel({
       )}
     >
       {/* 1. DAILY CONTRIBUTION CHALLENGE CARD */}
-      <div className="border border-border/80 rounded-sm bg-card p-3.5 space-y-3 relative">
+      <div className="border border-border/80 rounded-xl bg-card p-3.5 space-y-3 relative shadow-xs">
         <div className="flex items-center justify-between pb-2 border-b border-border/60">
           <div className="flex items-center gap-1.5 font-semibold text-foreground">
             <CalendarIcon className="w-3.5 h-3.5 text-primary" />
             <span>Daily Challenge</span>
           </div>
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-xs bg-muted text-muted-foreground uppercase">
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted text-muted-foreground uppercase font-medium">
             {challenge?.challengeDate || new Date().toISOString().slice(0, 10)}
           </span>
         </div>
@@ -171,7 +171,7 @@ export function DailyChallengePanel({
                   {challenge.issue.repository}
                 </span>
                 <span className={cn(
-                  "text-[9px] px-1 py-0.2 rounded-xs font-semibold uppercase",
+                  "text-[9px] px-1.5 py-0.5 rounded-md font-semibold uppercase tracking-wider",
                   isCompleted 
                     ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                     : "bg-muted text-muted-foreground"
@@ -185,11 +185,11 @@ export function DailyChallengePanel({
               </h4>
 
               <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                <span className="text-[10px] px-1.5 py-0.2 rounded-xs bg-muted/60 text-foreground/80 capitalize">
+                <span className="text-[10px] px-2 py-0.5 rounded-md bg-muted/60 text-foreground/80 capitalize font-medium">
                   {challenge.issue.difficulty}
                 </span>
                 {challenge.issue.technologies.slice(0, 2).map((t) => (
-                  <span key={t} className="text-[10px] px-1.5 py-0.2 rounded-xs bg-muted/60 text-muted-foreground">
+                  <span key={t} className="text-[10px] px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground">
                     {t}
                   </span>
                 ))}
@@ -203,7 +203,7 @@ export function DailyChallengePanel({
 
             {/* Why it matches */}
             {challenge.issue.reasons && challenge.issue.reasons.length > 0 && (
-              <div className="p-2 rounded-xs bg-muted/30 border border-border/40 text-[11px] text-muted-foreground">
+              <div className="p-2.5 rounded-lg bg-muted/30 border border-border/40 text-[11px] text-muted-foreground">
                 <span className="font-semibold text-foreground/90 block mb-0.5">Why it matches:</span>
                 <span>{challenge.issue.reasons[0]}</span>
               </div>
@@ -214,7 +214,7 @@ export function DailyChallengePanel({
               <button
                 type="button"
                 onClick={() => router.push(`/analyze/${challenge.matchId}`)}
-                className="flex-1 h-7 text-xs font-medium rounded-xs bg-foreground text-background hover:bg-foreground/90 transition-colors inline-flex items-center justify-center gap-1 shadow-2xs"
+                className="flex-1 h-7.5 text-xs font-medium rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors inline-flex items-center justify-center gap-1 shadow-2xs"
               >
                 <span>Explore in Workspace</span>
                 <ArrowRight className="w-3 h-3" />
@@ -225,7 +225,7 @@ export function DailyChallengePanel({
                   type="button"
                   onClick={handleReplace}
                   disabled={isReplacing}
-                  className="h-7 px-2 rounded-xs border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors inline-flex items-center gap-1"
+                  className="h-7.5 px-2.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors inline-flex items-center gap-1"
                   title="View another eligible challenge"
                   aria-label="View another challenge"
                 >
@@ -301,7 +301,7 @@ export function DailyChallengePanel({
                   onClick={handleComplete}
                   disabled={!allChecklistItemsConfirmed || isCompleting}
                   className={cn(
-                    "w-full h-7 text-xs font-medium rounded-xs transition-colors inline-flex items-center justify-center gap-1.5 shadow-2xs mt-1",
+                    "w-full h-7.5 text-xs font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 shadow-2xs mt-1",
                     allChecklistItemsConfirmed
                       ? "bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer font-semibold"
                       : "bg-muted text-muted-foreground cursor-not-allowed border border-border/40"
@@ -315,7 +315,7 @@ export function DailyChallengePanel({
                   <span>Complete Daily Challenge</span>
                 </button>
               ) : (
-                <div className="py-1 px-2 rounded-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] flex items-center justify-center gap-1.5 mt-1">
+                <div className="py-1.5 px-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] flex items-center justify-center gap-1.5 mt-1">
                   <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                   <span>Challenge Completed Today</span>
                 </div>
@@ -326,7 +326,7 @@ export function DailyChallengePanel({
       </div>
 
       {/* 2. CHALLENGE STREAK WIDGET */}
-      <div className="border border-border/80 rounded-sm bg-card p-3 space-y-1.5">
+      <div className="border border-border/80 rounded-xl bg-card p-3 space-y-1.5 shadow-xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <motion.div
@@ -363,7 +363,7 @@ export function DailyChallengePanel({
       </div>
 
       {/* 3. DAILY COMPLETION CALENDAR */}
-      <div className="border border-border/80 rounded-sm bg-card p-3 space-y-2">
+      <div className="border border-border/80 rounded-xl bg-card p-3 space-y-2 shadow-xs">
         <DailyCalendar
           history={history}
           currentYear={currentYear}
@@ -376,7 +376,7 @@ export function DailyChallengePanel({
       </div>
 
       {/* 4. CONTRIBUTION PROGRESS */}
-      <div className="border border-border/80 rounded-sm bg-card p-3">
+      <div className="border border-border/80 rounded-xl bg-card p-3 shadow-xs">
         <ContributionProgress progress={progress} />
       </div>
     </aside>

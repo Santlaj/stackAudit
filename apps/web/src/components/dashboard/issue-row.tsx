@@ -38,7 +38,7 @@ export function IssueRow({ issue, onToggleSave, onExplore }: IssueRowProps) {
   const diffLabel = isGood ? "Good first" : isInter ? "Intermediate" : isAdv ? "Advanced" : (issue.complexity || "Good first");
 
   return (
-    <div className="border border-border rounded-xs bg-card px-3.5 py-3 hover:border-foreground/30 hover:bg-muted/30 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 group shadow-2xs">
+    <div className="border border-border rounded-xl bg-card px-3.5 py-3 hover:border-foreground/30 hover:bg-muted/30 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 group shadow-2xs">
       
       {/* ISSUE TITLE & REPOSITORY METADATA */}
       <div className="min-w-0 flex-1 space-y-1">
@@ -64,7 +64,7 @@ export function IssueRow({ issue, onToggleSave, onExplore }: IssueRowProps) {
             const iconSrc = TECH_ICONS[tech.toLowerCase()];
             const dotColor = TECH_COLORS[tech] || TECH_COLORS[tech.toLowerCase()];
             return (
-              <span key={tech} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs bg-muted/60 text-foreground/80 text-[10px] font-medium">
+              <span key={tech} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/60 text-foreground/80 text-[10px] font-medium">
                 {iconSrc ? (
                   <span className="w-3 h-3 shrink-0 flex items-center justify-center overflow-visible">
                     <img
@@ -145,7 +145,7 @@ export function IssueRow({ issue, onToggleSave, onExplore }: IssueRowProps) {
         <button
           type="button"
           onClick={() => onExplore(issue.id)}
-          className="px-2.5 py-1 text-xs font-medium rounded-xs bg-foreground text-background hover:bg-foreground/90 transition-colors inline-flex items-center gap-1.5 shadow-2xs"
+          className="px-2.5 py-1 text-xs font-medium rounded-md bg-foreground text-background hover:bg-foreground/90 transition-colors inline-flex items-center gap-1.5 shadow-2xs"
         >
           <span>Explore</span>
           <ArrowRight className="w-3 h-3" />
