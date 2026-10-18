@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ActiveTimeTracker } from "@/components/activity/active-time-tracker";
 import "./globals.css";
@@ -18,25 +18,29 @@ const geistMono = Geist_Mono({
   fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "monospace"],
 });
 
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://stackaudit.santlaj.in"),
   title: {
-    default: "StackAudit — AI-Powered Open-Source Contribution Intelligence",
+    default: "StackAudit — Open-Source Contribution Intelligence",
     template: "%s | StackAudit",
   },
   description:
-    "StackAudit is an AI-powered GitHub repository intelligence platform that matches developers with open-source issues, analyzes codebases, and provides actionable contribution guides.",
+    "StackAudit is a developer platform that matches your skills to real open-source GitHub issues, providing architectural context, relevant files, and structured investigation checklists.",
   keywords: [
     "StackAudit",
-    "Stack Audit",
-    "StackAudit AI",
     "Open Source Contribution Intelligence",
-    "GitHub repository intelligence",
+    "GitHub repository discovery",
     "good first issues",
-    "open source matchmaker",
     "developer portfolio",
     "contribute to open source",
-    "codebase analyzer",
+    "codebase architecture",
   ],
   authors: [{ name: "StackAudit", url: "https://stackaudit.santlaj.in" }],
   creator: "StackAudit",
@@ -49,7 +53,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://stackaudit.santlaj.in",
     siteName: "StackAudit",
-    title: "StackAudit — AI-Powered Open-Source Contribution Intelligence",
+    title: "StackAudit — Open-Source Contribution Intelligence",
     description:
       "Match with open-source issues that fit your developer skills and get architectural code context to start contributing immediately.",
     images: [
@@ -92,14 +96,14 @@ const jsonLdWebSite = {
   alternateName: ["StackAudit AI", "Stack Audit", "stackaudit"],
   url: "https://stackaudit.santlaj.in/",
   description:
-    "StackAudit is an AI-powered GitHub repository intelligence platform that matches developers with open-source issues and provides architectural contribution guidance.",
+    "StackAudit is a developer platform that matches your skills to real open-source GitHub issues, providing architectural context, relevant files, and structured investigation checklists.",
 };
 
 const jsonLdOrganization = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "StackAudit",
-  alternateName: "StackAudit AI",
+  alternateName: "StackAudit",
   url: "https://stackaudit.santlaj.in/",
   logo: "https://stackaudit.santlaj.in/icon.png",
   sameAs: ["https://github.com/Santlaj/stackAudit"],
@@ -114,7 +118,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} h-full antialiased`}
     >
       <head>
         <script
