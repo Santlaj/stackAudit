@@ -73,10 +73,14 @@ app.use("/api/github", githubRoutes);
 app.use("/api/discovery", discoveryRoutes);
 app.use("/api/analysis", analysisRoutes);
 
-// Redirect root requests to frontend
+// Root status check
 app.get("/", (req, res) => {
-  const query = req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "";
-  res.redirect(`${env.FRONTEND_URL.replace(/\/$/, "")}${query}`);
+  res.json({
+    name: "StackAudit API",
+    status: "healthy",
+    frontend: env.FRONTEND_URL,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Error handling (must be last)
