@@ -21,7 +21,7 @@ interface IssueItem {
   number: number;
   title: string;
   matchScore: number;
-  tags: { label: string; color: "blue" | "green" | "purple" | "rose" | "neutral" | "amber" }[];
+  tags: { label: string; color: "blue" | "green" | "purple" | "rose" | "neutral" }[];
   summary: string;
   files: string[];
 }
@@ -69,7 +69,7 @@ const SAMPLE_ISSUES: IssueItem[] = [
     matchScore: 85,
     tags: [
       { label: "TypeScript", color: "blue" },
-      { label: "Documentation", color: "amber" },
+      { label: "Documentation", color: "amber" as any },
     ],
     summary:
       "Expand reference guide on PostgreSQL JSONB operators inside Row Level Security expressions with working SQL examples.",
@@ -385,11 +385,7 @@ export function EditorialHero() {
                                     ? "bg-emerald-50 text-emerald-700"
                                     : t.color === "amber"
                                     ? "bg-amber-50 text-amber-700"
-                                    : t.color === "purple"
-                                    ? "bg-purple-50 text-purple-700"
-                                    : t.color === "rose"
-                                    ? "bg-rose-50 text-rose-700"
-                                    : "bg-neutral-100 text-neutral-700"
+                                    : "bg-rose-50 text-rose-700"
                                 }`}
                               >
                                 {t.label === "TypeScript" ? "• TypeScript" : t.label}

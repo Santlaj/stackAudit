@@ -16,6 +16,22 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const err = params.get("error");
+      if (err) {
+        if (err === "invalid_code" || err === "oauth_failed") {
+          setError(
+            "GitHub authentication failed. Please check that GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET in Render match your GitHub Developer settings."
+          );
+        } else {
+          setError(`Authentication error: ${err}`);
+        }
+      }
+    }
+  }, []);
+
   const handleSocialLogin = async (provider: "github" | "google") => {
     setError(null);
     if (provider === "github") {

@@ -108,9 +108,12 @@ authRouter.get("/login/github", async (req, res, next) => {
     const headers = buildWebHeaders(req);
     headers.set("content-type", "application/json");
 
+    const errorCallbackUrl = `${env.FRONTEND_URL.replace(/\/$/, "")}/login?error=oauth_failed`;
+
     const body = JSON.stringify({
       provider: "github",
       callbackURL: targetCallbackUrl,
+      errorCallbackURL: errorCallbackUrl,
     });
 
     const webRequest = new Request(syntheticUrl, {
@@ -170,6 +173,11 @@ authRouter.get("/login/github", async (req, res, next) => {
 // Delegate all other auth endpoints to Better Auth using native auth.handler
 authRouter.use(async (req, res, next) => {
   try {
+    const isCallback = req.originalUrl.includes("/callback/github");
+    if (isCallback) {
+      console.log("[GitHub OAuth Callback] Incoming query:", req.query);
+    }
+
     const { protocol, host } = resolveOrigin(req);
     const fullUrl = `${protocol}://${host}${req.originalUrl}`;
 
@@ -189,6 +197,14 @@ authRouter.use(async (req, res, next) => {
     const response = await auth.handler(webRequest);
 
     if (response) {
+      if (isCallback) {
+        console.log(
+          "[GitHub OAuth Callback] Handled -> Status:",
+          response.status,
+          "Location:",
+          response.headers.get("location"),
+        );
+      }
       await pipeWebResponse(response, res);
     } else {
       next();

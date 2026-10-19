@@ -6,13 +6,26 @@ import { env } from "../../config/env.js";
 // Better Auth instance — handles all OAuth flows, session management,
 // and token creation. Configured with Prisma adapter for persistence.
 
+// Normalize authBase so that whether BETTER_AUTH_URL is 'https://api.stackaudit.santlaj.in'
+// or 'https://api.stackaudit.santlaj.in/api/auth', it resolves cleanly without duplicates.
+const authBase = (env.BETTER_AUTH_URL || "https://api.stackaudit.santlaj.in")
+  .replace(/\/$/, "")
+  .replace(/\/api\/auth$/, "");
+
+const githubRedirectUri = `${authBase}/api/auth/callback/github`;
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
 
   secret: env.BETTER_AUTH_SECRET,
-  baseURL: env.BETTER_AUTH_URL,
+  baseURL: authBase,
+  basePath: "/api/auth",
+
+  onAPIError: {
+    errorURL: `${env.FRONTEND_URL.replace(/\/$/, "")}/login`,
+  },
 
   emailAndPassword: {
     enabled: true,
@@ -22,7 +35,7 @@ export const auth = betterAuth({
     github: {
       clientId: env.GITHUB_CLIENT_ID,
       clientSecret: env.GITHUB_CLIENT_SECRET,
-      redirectURI: `${env.BETTER_AUTH_URL.replace(/\/$/, "")}/api/auth/callback/github`,
+      redirectURI: githubRedirectUri,
     },
     google: {
       clientId: env.GOOGLE_CLIENT_ID || "",
