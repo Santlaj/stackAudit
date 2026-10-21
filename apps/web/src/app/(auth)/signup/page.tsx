@@ -163,7 +163,9 @@ export default function SignupPage() {
 
       <p className="text-[12px] text-center text-muted-foreground px-4 mt-6 leading-relaxed">
         By clicking continue, you agree to our{" "}
-        <a href="#" className="underline hover:text-foreground transition-colors">Terms of Service</a>
+        <a href="/terms" className="underline hover:text-foreground transition-colors">Terms of Service</a>{" "}
+        and{" "}
+        <a href="/privacy" className="underline hover:text-foreground transition-colors">Privacy Policy</a>.
       </p>
 
       <div className="text-center text-[13px] text-muted-foreground pt-2">

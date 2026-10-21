@@ -1,10 +1,8 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import {
   ArrowRight,
-  Play,
   Search,
   FileCode2,
   CheckCircle2,
@@ -82,25 +80,6 @@ export function EditorialUseCase() {
               </div>
             </div>
 
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link
-                href="/discover"
-                className="group inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white shadow-xs transition-all hover:bg-neutral-800"
-              >
-                <span>Explore sample issue</span>
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-              </Link>
-
-              <a
-                href="#how-it-works"
-                className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 py-2.5 text-sm font-medium text-neutral-800 shadow-2xs transition-colors hover:bg-neutral-50"
-              >
-                <div className="flex h-4 w-4 items-center justify-center rounded-full bg-neutral-900 text-white">
-                  <Play className="h-2 w-2 fill-current translate-x-px" />
-                </div>
-                <span>See sequence</span>
-              </a>
-            </div>
           </div>
 
           {/* Right Column: Single Unified Product Workbench Interface */}
@@ -281,13 +260,13 @@ export function EditorialUseCase() {
                     <span>Contribution Plan Ready</span>
                   </div>
 
-                  <Link
-                    href="/discover"
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 py-1.5 font-semibold text-white transition-colors hover:bg-neutral-800"
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 py-1.5 font-semibold text-white transition-colors hover:bg-neutral-800 cursor-default"
                   >
                     <span>Open in workspace</span>
                     <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
+                  </button>
                 </div>
               </div>
             </div>
@@ -313,98 +292,56 @@ export function EditorialUseCase() {
           {/* 4 Capability Cards Grid */}
           <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {/* 1. Issue discovery */}
-            <Link
-              href="/discover"
-              className="group rounded-xl border border-neutral-200/90 bg-[#FAFAF9] p-5 shadow-2xs transition-all hover:bg-white hover:border-neutral-300 hover:shadow-xs"
-            >
+            <div className="rounded-xl border border-neutral-200/90 bg-[#FAFAF9] p-5 shadow-2xs transition-all hover:bg-white hover:border-neutral-300">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600 border border-blue-200/50">
                 <Search className="h-4 w-4" />
               </div>
-              <div className="mt-4 flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-neutral-900 group-hover:text-blue-600 transition-colors">
-                  Issue discovery
-                </h4>
-                <ArrowRight className="h-3.5 w-3.5 text-neutral-400 group-hover:translate-x-0.5 group-hover:text-neutral-900 transition-all" />
-              </div>
+              <h4 className="mt-4 text-sm font-semibold text-neutral-900">
+                Issue discovery
+              </h4>
               <p className="mt-1.5 text-xs text-neutral-600 leading-relaxed">
                 Find open issues based on your skills, interests, and preferred tech stack.
               </p>
-            </Link>
+            </div>
 
             {/* 2. Repository context */}
-            <Link
-              href="/discover"
-              className="group rounded-xl border border-neutral-200/90 bg-[#FAFAF9] p-5 shadow-2xs transition-all hover:bg-white hover:border-neutral-300 hover:shadow-xs"
-            >
+            <div className="rounded-xl border border-neutral-200/90 bg-[#FAFAF9] p-5 shadow-2xs transition-all hover:bg-white hover:border-neutral-300">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 text-purple-600 border border-purple-200/50">
                 <FileCode2 className="h-4 w-4" />
               </div>
-              <div className="mt-4 flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-neutral-900 group-hover:text-purple-600 transition-colors">
-                  Repository context
-                </h4>
-                <ArrowRight className="h-3.5 w-3.5 text-neutral-400 group-hover:translate-x-0.5 group-hover:text-neutral-900 transition-all" />
-              </div>
+              <h4 className="mt-4 text-sm font-semibold text-neutral-900">
+                Repository context
+              </h4>
               <p className="mt-1.5 text-xs text-neutral-600 leading-relaxed">
                 Get relevant code context, file structure, and dependencies to understand the issue better.
               </p>
-            </Link>
+            </div>
 
             {/* 3. Investigation checklist */}
-            <Link
-              href="/discover"
-              className="group rounded-xl border border-neutral-200/90 bg-[#FAFAF9] p-5 shadow-2xs transition-all hover:bg-white hover:border-neutral-300 hover:shadow-xs"
-            >
+            <div className="rounded-xl border border-neutral-200/90 bg-[#FAFAF9] p-5 shadow-2xs transition-all hover:bg-white hover:border-neutral-300">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200/50">
                 <CheckCircle2 className="h-4 w-4" />
               </div>
-              <div className="mt-4 flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-neutral-900 group-hover:text-emerald-600 transition-colors">
-                  Investigation checklist
-                </h4>
-                <ArrowRight className="h-3.5 w-3.5 text-neutral-400 group-hover:translate-x-0.5 group-hover:text-neutral-900 transition-all" />
-              </div>
+              <h4 className="mt-4 text-sm font-semibold text-neutral-900">
+                Investigation checklist
+              </h4>
               <p className="mt-1.5 text-xs text-neutral-600 leading-relaxed">
                 Follow a structured plan with key files, components, and areas to explore.
               </p>
-            </Link>
+            </div>
 
             {/* 4. Plan your contribution */}
-            <Link
-              href="/discover"
-              className="group rounded-xl border border-neutral-200/90 bg-[#FAFAF9] p-5 shadow-2xs transition-all hover:bg-white hover:border-neutral-300 hover:shadow-xs"
-            >
+            <div className="rounded-xl border border-neutral-200/90 bg-[#FAFAF9] p-5 shadow-2xs transition-all hover:bg-white hover:border-neutral-300">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-600 border border-amber-200/50">
                 <GitBranch className="h-4 w-4" />
               </div>
-              <div className="mt-4 flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-neutral-900 group-hover:text-amber-600 transition-colors">
-                  Plan your contribution
-                </h4>
-                <ArrowRight className="h-3.5 w-3.5 text-neutral-400 group-hover:translate-x-0.5 group-hover:text-neutral-900 transition-all" />
-              </div>
+              <h4 className="mt-4 text-sm font-semibold text-neutral-900">
+                Plan your contribution
+              </h4>
               <p className="mt-1.5 text-xs text-neutral-600 leading-relaxed">
                 Understand what needs to be done and move forward with confidence.
               </p>
-            </Link>
-          </div>
-
-          {/* Bottom helper bar */}
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-[#FAFAF9] px-4 py-2.5">
-            <div className="flex items-center gap-2 text-xs text-neutral-600">
-              <span className="flex h-5 w-5 items-center justify-center rounded bg-neutral-200/80 font-mono text-[10px] text-neutral-800">
-                &gt;_
-              </span>
-              <span>Designed for developers who want to contribute to open source, without the overwhelming guesswork.</span>
             </div>
-
-            <Link
-              href="/discover"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-900 hover:text-neutral-700"
-            >
-              <span>Explore all features</span>
-              <ArrowRight className="h-3 w-3" />
-            </Link>
           </div>
         </div>
       </div>

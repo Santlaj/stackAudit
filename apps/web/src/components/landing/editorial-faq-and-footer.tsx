@@ -88,7 +88,8 @@ export function EditorialFaqAndFooter() {
   };
 
   return (
-    <section id="faq" className="relative border-t border-neutral-200/80 bg-[#FAFAF9] pt-16 sm:pt-24 pb-12 overflow-hidden">
+    <>
+      <section id="faq" className="relative border-t border-neutral-200/80 bg-[#FAFAF9] pt-16 sm:pt-24 pb-12 overflow-hidden">
       {/* Interactive Background Grid */}
       <InteractiveCanvasGrid />
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -161,26 +162,33 @@ export function EditorialFaqAndFooter() {
               </div>
             </div>
 
-            {/* Mini Visual Flow Journey Matching Reference */}
-            <div className="mt-10 rounded-2xl border border-neutral-200/90 bg-white p-5 shadow-sm hidden sm:block relative overflow-hidden">
-              <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400 italic mb-3">
-                <span className="flex items-center gap-1.5">
-                  <span>From issue...</span>
-                  <svg className="w-8 h-4 text-neutral-300 stroke-current" viewBox="0 0 32 16" fill="none">
-                    <path d="M2 4 C 12 14, 20 12, 28 6" strokeLinecap="round" strokeDasharray="2 2" strokeWidth="1.5" />
-                    <polygon points="26,6 30,6 28,10" fill="currentColor" />
-                  </svg>
+            {/* Visual Transformation Pipeline: Issue -> Context Analysis -> Verified Action Plan */}
+            <div className="mt-10 rounded-2xl border border-neutral-200/90 bg-white p-5 shadow-xs hidden sm:block relative overflow-hidden">
+              {/* Connected Stage Progression Bar */}
+              <div className="flex items-center justify-between text-[11px] font-mono text-neutral-500 mb-3.5 px-0.5">
+                <span className="flex items-center gap-1.5 font-medium text-neutral-800">
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-neutral-200/80 text-[10px] font-bold text-neutral-700">1</span>
+                  <span>Unfiltered Issue</span>
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <svg className="w-8 h-4 text-neutral-300 stroke-current" viewBox="0 0 32 16" fill="none">
-                    <path d="M2 10 C 10 4, 18 4, 28 8" strokeLinecap="round" strokeDasharray="2 2" strokeWidth="1.5" />
-                    <polygon points="26,8 30,8 28,12" fill="currentColor" />
-                  </svg>
-                  <span>...to a clear plan.</span>
+                <div className="flex-1 mx-3 flex items-center">
+                  <div className="h-px w-full bg-neutral-200 border-t border-dashed border-neutral-300" />
+                  <ArrowRight className="h-3 w-3 text-neutral-400 -ml-1 shrink-0" />
+                </div>
+                <span className="flex items-center gap-1.5 font-medium text-neutral-800">
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-800">2</span>
+                  <span>StackAudit Indexing</span>
+                </span>
+                <div className="flex-1 mx-3 flex items-center">
+                  <div className="h-px w-full bg-neutral-200 border-t border-dashed border-neutral-300" />
+                  <ArrowRight className="h-3 w-3 text-neutral-400 -ml-1 shrink-0" />
+                </div>
+                <span className="flex items-center gap-1.5 font-medium text-neutral-800">
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-800">3</span>
+                  <span>Verified Plan</span>
                 </span>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {/* 1. Issue Card */}
                 <div className="flex-1 rounded-xl border border-neutral-200 bg-[#FAFAF9] p-3 shadow-2xs">
                   <div className="flex items-center justify-between">
@@ -203,7 +211,10 @@ export function EditorialFaqAndFooter() {
                   </div>
                 </div>
 
-                <div className="text-neutral-300 font-mono text-xs">···&gt;</div>
+                {/* Connector 1 */}
+                <div className="flex items-center justify-center shrink-0 w-5 text-neutral-400">
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </div>
 
                 {/* 2. StackAudit Analysis */}
                 <div className="flex-1 rounded-xl border border-neutral-200 bg-white p-3 shadow-2xs">
@@ -227,22 +238,25 @@ export function EditorialFaqAndFooter() {
                   </ul>
                 </div>
 
-                <div className="text-neutral-300 font-mono text-xs">···&gt;</div>
+                {/* Connector 2 */}
+                <div className="flex items-center justify-center shrink-0 w-5 text-neutral-400">
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </div>
 
                 {/* 3. Next Steps Checklist */}
                 <div className="flex-1 rounded-xl border border-neutral-200 bg-[#FAFAF9] p-3 shadow-2xs">
                   <span className="text-[11px] font-semibold text-neutral-900">Next steps</span>
                   <ul className="mt-1.5 space-y-1 text-[9px] text-neutral-700">
                     <li className="flex items-center gap-1.5">
-                      <span className="h-3 w-3 rounded border border-neutral-300 bg-white flex items-center justify-center text-[8px] text-neutral-400">✓</span>
+                      <span className="h-3 w-3 rounded border border-neutral-300 bg-white flex items-center justify-center text-[8px] text-emerald-600 font-bold">✓</span>
                       <span className="truncate">Explore relevant code</span>
                     </li>
                     <li className="flex items-center gap-1.5">
-                      <span className="h-3 w-3 rounded border border-neutral-300 bg-white flex items-center justify-center text-[8px] text-neutral-400">✓</span>
+                      <span className="h-3 w-3 rounded border border-neutral-300 bg-white flex items-center justify-center text-[8px] text-emerald-600 font-bold">✓</span>
                       <span className="truncate">Understand expected fix</span>
                     </li>
                     <li className="flex items-center gap-1.5">
-                      <span className="h-3 w-3 rounded border border-neutral-300 bg-white flex items-center justify-center text-[8px] text-neutral-400">✓</span>
+                      <span className="h-3 w-3 rounded border border-neutral-300 bg-white flex items-center justify-center text-[8px] text-emerald-600 font-bold">✓</span>
                       <span className="truncate">Plan implementation</span>
                     </li>
                   </ul>
@@ -293,173 +307,170 @@ export function EditorialFaqAndFooter() {
             </div>
           </div>
         </div>
-
-        {/* ── COMPACT FOOTER ── */}
-        <footer className="mt-20 sm:mt-28 border-t border-neutral-200 pt-12 pb-6">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
-            {/* Brand column */}
-            <div className="col-span-2">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded overflow-hidden">
-                  <img src="/icon.png" alt="StackAudit Logo" className="h-full w-full object-contain" />
-                </div>
-                <span className="text-sm font-semibold tracking-tight text-neutral-900">StackAudit</span>
-              </Link>
-              <p className="mt-2 text-xs text-neutral-500">
-                Understand. Explore. Contribute.
-              </p>
-              <p className="mt-1 text-xs text-neutral-500 max-w-xs leading-relaxed">
-                Developer platform for open-source contribution intelligence and architectural codebase context.
-              </p>
-            </div>
-
-            {/* Product */}
-            <div>
-              <h5 className="text-xs font-semibold uppercase tracking-wider text-neutral-900">Product</h5>
-              <ul className="mt-3 space-y-2 text-xs text-neutral-600">
-                <li>
-                  <a href="#features" className="hover:text-neutral-900 transition-colors">
-                    Features
-                  </a>
-                </li>
-                <li>
-                  <a href="#how-it-works" className="hover:text-neutral-900 transition-colors">
-                    How it works
-                  </a>
-                </li>
-                <li>
-                  <Link href="/discover" className="hover:text-neutral-900 transition-colors">
-                    Directory
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/discover" className="hover:text-neutral-900 transition-colors">
-                    Changelog
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Resources */}
-            <div>
-              <h5 className="text-xs font-semibold uppercase tracking-wider text-neutral-900">Resources</h5>
-              <ul className="mt-3 space-y-2 text-xs text-neutral-600">
-                <li>
-                  <a
-                    href="https://github.com/Santlaj/stackauditvercel"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-neutral-900 transition-colors"
-                  >
-                    Documentation
-                  </a>
-                </li>
-                <li>
-                  <a href="#how-it-works" className="hover:text-neutral-900 transition-colors">
-                    Guides
-                  </a>
-                </li>
-                <li>
-                  <a href="#faq" className="hover:text-neutral-900 transition-colors">
-                    FAQ
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://github.com/Santlaj/stackauditvercel"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-neutral-900 transition-colors"
-                  >
-                    Community
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            {/* Stay in the loop */}
-            <div className="col-span-2 md:col-span-1">
-              <h5 className="text-xs font-semibold uppercase tracking-wider text-neutral-900">Stay in the loop</h5>
-              <p className="mt-2 text-xs text-neutral-500">
-                Get product updates, new features, and open-source insights.
-              </p>
-              <form onSubmit={handleNewsletterSubmit} className="mt-3 flex items-center gap-1.5">
-                <input
-                  type="email"
-                  value={newsletterEmail}
-                  onChange={(e) => setNewsletterEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  required
-                  className="w-full rounded-md border border-neutral-300 bg-white px-2.5 py-1.5 text-xs text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-neutral-900 text-white transition-colors hover:bg-neutral-800"
-                >
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              </form>
-              {newsletterSubmitted && (
-                <p className="mt-1.5 text-[11px] text-emerald-600">Thank you for subscribing!</p>
-              )}
-
-              {/* Social links */}
-              <div className="mt-4 flex items-center gap-3 text-neutral-500">
-                <a
-                  href="https://github.com/Santlaj/stackauditvercel"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-neutral-900 transition-colors"
-                  aria-label="GitHub"
-                >
-                  <Github className="h-4 w-4" />
-                </a>
-                <a
-                  href="https://x.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-neutral-900 transition-colors"
-                  aria-label="X Twitter"
-                >
-                  <Twitter className="h-4 w-4" />
-                </a>
-                <a
-                  href="https://linkedin.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-neutral-900 transition-colors"
-                  aria-label="LinkedIn"
-                >
-                  <Linkedin className="h-4 w-4" />
-                </a>
-                <a
-                  href="https://youtube.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-neutral-900 transition-colors"
-                  aria-label="YouTube"
-                >
-                  <Youtube className="h-4 w-4" />
-                </a>
-                <a
-                  href="mailto:contact@santlaj.in"
-                  className="hover:text-neutral-900 transition-colors"
-                  aria-label="Email"
-                >
-                  <Mail className="h-4 w-4" />
-                </a>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Copyright and Mandatory Santlaj attribution */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-neutral-200/80 pt-6 text-xs text-neutral-500">
-            <div>© 2026 StackAudit. All rights reserved.</div>
-            <div className="font-medium text-neutral-700">Crafted by Santlaj</div>
-            <div>Made for the open-source community • India 🇮🇳</div>
-          </div>
-        </footer>
       </div>
     </section>
+
+    {/* ── GROUNDED EDITORIAL FOOTER (NO GRID LINES) ── */}
+    <footer className="border-t border-neutral-300 bg-white pt-14 pb-8 relative z-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
+          {/* Brand column */}
+          <div className="col-span-2">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded overflow-hidden">
+                <img src="/icon.png" alt="StackAudit Logo" className="h-full w-full object-contain" />
+              </div>
+              <span className="text-sm font-semibold tracking-tight text-neutral-900">StackAudit</span>
+            </Link>
+            <p className="mt-2 text-xs text-neutral-500">
+              Understand. Explore. Contribute.
+            </p>
+            <p className="mt-1 text-xs text-neutral-500 max-w-xs leading-relaxed">
+              Developer platform for open-source contribution intelligence and architectural codebase context.
+            </p>
+          </div>
+
+          {/* Product */}
+          <div>
+            <h5 className="text-xs font-semibold uppercase tracking-wider text-neutral-900">Product</h5>
+            <ul className="mt-3 space-y-2 text-xs text-neutral-600">
+              <li>
+                <a href="#features" className="hover:text-neutral-900 transition-colors">
+                  Features
+                </a>
+              </li>
+              <li>
+                <a href="#how-it-works" className="hover:text-neutral-900 transition-colors">
+                  How it works
+                </a>
+              </li>
+              <li>
+                <Link href="/discover" className="hover:text-neutral-900 transition-colors">
+                  Directory
+                </Link>
+              </li>
+              <li>
+                <Link href="/changelog" className="hover:text-neutral-900 transition-colors">
+                  Changelog
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Resources */}
+          <div>
+            <h5 className="text-xs font-semibold uppercase tracking-wider text-neutral-900">Resources</h5>
+            <ul className="mt-3 space-y-2 text-xs text-neutral-600">
+              <li>
+                <Link href="/docs" className="hover:text-neutral-900 transition-colors">
+                  Documentation
+                </Link>
+              </li>
+              <li>
+                <Link href="/docs#guides" className="hover:text-neutral-900 transition-colors">
+                  Guides
+                </Link>
+              </li>
+              <li>
+                <a href="#faq" className="hover:text-neutral-900 transition-colors">
+                  FAQ
+                </a>
+              </li>
+              <li>
+                <Link href="/community" className="hover:text-neutral-900 transition-colors">
+                  Community
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Stay in the loop */}
+          <div className="col-span-2 md:col-span-1">
+            <h5 className="text-xs font-semibold uppercase tracking-wider text-neutral-900">Stay in the loop</h5>
+            <p className="mt-2 text-xs text-neutral-500">
+              Get product updates, new features, and open-source insights.
+            </p>
+            <form onSubmit={handleNewsletterSubmit} className="mt-3 flex items-center gap-1.5">
+              <input
+                type="email"
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
+                placeholder="Enter your email"
+                required
+                className="w-full rounded-md border border-neutral-300 bg-white px-2.5 py-1.5 text-xs text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-neutral-900 text-white transition-colors hover:bg-neutral-800"
+              >
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </form>
+            {newsletterSubmitted && (
+              <p className="mt-1.5 text-[11px] text-emerald-600">Thank you for subscribing!</p>
+            )}
+
+            {/* Social links */}
+            <div className="mt-4 flex items-center gap-3 text-neutral-500">
+              <a
+                href="https://github.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-neutral-900 transition-colors"
+                aria-label="GitHub"
+              >
+                <Github className="h-4 w-4" />
+              </a>
+              <a
+                href="https://x.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-neutral-900 transition-colors"
+                aria-label="X Twitter"
+              >
+                <Twitter className="h-4 w-4" />
+              </a>
+              <a
+                href="https://linkedin.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-neutral-900 transition-colors"
+                aria-label="LinkedIn"
+              >
+                <Linkedin className="h-4 w-4" />
+              </a>
+              <a
+                href="https://youtube.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-neutral-900 transition-colors"
+                aria-label="YouTube"
+              >
+                <Youtube className="h-4 w-4" />
+              </a>
+              <a
+                href="mailto:contact@santlaj.in"
+                className="hover:text-neutral-900 transition-colors"
+                aria-label="Email"
+              >
+                <Mail className="h-4 w-4" />
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Copyright and Legal Links */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-neutral-200/80 pt-6 text-xs text-neutral-500">
+          <div className="flex items-center gap-4">
+            <span>© 2026 StackAudit. All rights reserved.</span>
+            <Link href="/terms" className="hover:text-neutral-900 transition-colors">Terms of Service</Link>
+            <Link href="/privacy" className="hover:text-neutral-900 transition-colors">Privacy Policy</Link>
+          </div>
+          <div className="font-medium text-neutral-700">Crafted by Santlaj</div>
+          <div>Made for the open-source community • India 🇮🇳</div>
+        </div>
+      </div>
+    </footer>
+    </>
   );
 }

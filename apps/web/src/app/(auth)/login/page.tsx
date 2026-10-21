@@ -21,13 +21,9 @@ export default function LoginPage() {
       const params = new URLSearchParams(window.location.search);
       const err = params.get("error");
       if (err) {
-        if (err === "invalid_code" || err === "oauth_failed") {
-          setError(
-            "GitHub authentication failed. Please check that GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET in Render match your GitHub Developer settings."
-          );
-        } else {
-          setError(`Authentication error: ${err}`);
-        }
+        setError("Unable to authenticate with GitHub. Please try again or sign in with email.");
+        // Clean URL query parameters from browser address bar
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
   }, []);
@@ -166,7 +162,9 @@ export default function LoginPage() {
 
       <p className="text-[12px] text-center text-muted-foreground px-4 mt-6 leading-relaxed">
         By clicking continue, you agree to our{" "}
-        <a href="#" className="underline hover:text-foreground transition-colors">Terms of Service</a>
+        <a href="/terms" className="underline hover:text-foreground transition-colors">Terms of Service</a>{" "}
+        and{" "}
+        <a href="/privacy" className="underline hover:text-foreground transition-colors">Privacy Policy</a>.
       </p>
 
       <div className="text-center text-[13px] text-muted-foreground pt-2">

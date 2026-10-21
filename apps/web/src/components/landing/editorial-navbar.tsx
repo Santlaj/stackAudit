@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowRight, Github } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export function EditorialNavbar() {
   return (
@@ -48,16 +48,6 @@ export function EditorialNavbar() {
 
         {/* Right Action Controls */}
         <div className="flex items-center gap-3">
-          <a
-            href="https://github.com/Santlaj/stackauditvercel"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-[13px] font-medium text-neutral-700 transition-colors hover:text-neutral-950 px-2.5 py-1.5 rounded-md hover:bg-neutral-100"
-          >
-            <Github className="h-4 w-4" />
-            <span className="hidden sm:inline">GitHub</span>
-          </a>
-
           <Link
             href="/login"
             className="text-[13px] font-medium text-neutral-700 transition-colors hover:text-neutral-950 px-2.5 py-1.5 rounded-md hover:bg-neutral-100"
@@ -66,7 +56,7 @@ export function EditorialNavbar() {
           </Link>
 
           <Link
-            href="/discover"
+            href="/signup"
             className="group inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 py-1.5 text-[13px] font-medium text-white shadow-xs transition-all hover:bg-neutral-800 active:scale-[0.98]"
           >
             <span>Get started</span>
